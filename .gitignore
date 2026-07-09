@@ -40,5 +40,25 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.atl
+.atl/
 .env
+
+# local agent instructions
+AGENTS.md
+
+# local downloaded asset/source files
+ffonts.net.*
+quick_tips.html
+info.txt
+install-a-new-font.txt
+lightfoot.txt
+*.zip
+fonts/PrincessAndTheFrog-XdMd.ttf
+
+# local/reference images not meant for production
+public/Princess Tiana.jpeg
+public/princess.png
+public/princess2.png
+public/princess3.png
+public/border.jpeg
+public/logo.svg
