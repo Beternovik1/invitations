@@ -1,0 +1,302 @@
+@import "tailwindcss";
+
+/* -------------------------------------------------------------------------- */
+/*  Design tokens                                                             */
+/*  Softer palette per the user's direction: sage, cream-white, pale yellow   */
+/*  green, and dusty teal. Gold remains the ornamental accent so the          */
+/*  Lightfoot title treatment is preserved.                                   */
+/*  Colors expressed as CSS custom properties so Tailwind utilities and raw   */
+/*  CSS can both consume them.                                                */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  /* User-provided softer swatch. */
+  --color-sage: #b8dba0;
+  --color-cream-white: #f9fce4;
+  --color-pale-yellow-green: #eef8c8;
+  --color-dusty-teal: #77a291;
+
+  /* Legacy aliases kept for the few places still referencing them; remapped
+     onto the new soft palette so old utilities don't fight the new tokens. */
+  --color-chartreuse: var(--color-pale-yellow-green);
+  --color-fern: var(--color-sage);
+  --color-forest: var(--color-dusty-teal);
+  --color-pixie-cream: var(--color-cream-white);
+
+  /* Surface — cream haze fading into sage, settling on dusty teal at depth. */
+  --color-bayou-night: var(--color-sage);
+  --color-bayou-mid: var(--color-pale-yellow-green);
+  --color-bayou-deep: var(--color-dusty-teal);
+
+  /* Dusty teal as the cool-depth accent (was deep forest); still acts as the
+     "mossy teal" role in the backdrop. */
+  --color-glow-teal: var(--color-dusty-teal);
+
+  /* Gold family — tuned to read warmly against the soft sage/cream ground.
+     Slightly deeper and richer than the previous amber-leaning set so the
+     title still pops without the previous high-contrast forest backdrop. */
+  --color-gold: #c79a3c;
+  --color-gold-soft: #9c7320;
+  --color-gold-bright: #f2d27a;
+
+  /* Blush remapped onto sage (still no pink in the base palette; small pink
+     accents now live only on the OrnamentalFrame top gem). */
+  --color-blush: var(--color-sage);
+  --color-blush-soft: var(--color-pale-yellow-green);
+
+  /* Ivory — cream-white, used for light panels and the title's highlight. */
+  --color-ivory: var(--color-cream-white);
+  --color-ivory-dim: rgba(249, 252, 228, 0.75);
+
+  /* Deep ink for legible text on the soft palette. A darkened teal so text
+     still belongs to the sage/teal family without going pure black. */
+  --color-ink: #213a32;
+  --color-ink-dim: rgba(33, 58, 50, 0.78);
+  --color-ink-soft: rgba(33, 58, 50, 0.6);
+  --color-cream-bright: #fbfde9;
+  --color-leaf-shadow: rgba(33, 58, 50, 0.32);
+
+  /* Glass panel surfaces. */
+  --color-glass: rgba(249, 252, 228, 0.5);
+  --color-glass-border: rgba(33, 58, 50, 0.22);
+
+  /* Tailwind semantic mapping (consumed as bg-/text- utilities). */
+  --color-background: var(--color-cream-white);
+  --color-foreground: var(--color-ink);
+  --color-primary: var(--color-sage);
+  --color-muted-foreground: var(--color-ink-dim);
+
+  /* Font families — only the display face is aliased here. The Lightfoot
+     local face is exposed by next/font/local in layout.tsx as
+     `--font-lightfoot`; the semantic `--font-display` token points at it so
+     the celebrant's name renders in the princess-movie-title flourish. The
+     token name deliberately differs from the next/font variable to avoid the
+     self-reference bug (a token reading `var(--font-display)` from its own
+     declaration silently falls back to the fallback stack and the local face
+     never loads).
+     `--font-serif` and `--font-sans` are NOT redeclared here — they are owned
+     by next/font (Cormorant Garamond / Jost) on `<html>`, and redeclaring them
+     would either self-reference (invalid) or shadow the loaded faces. */
+  --font-display: var(--font-lightfoot), "Cormorant Garamond", serif;
+}
+
+
+@theme inline {
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-primary: var(--color-primary);
+  --color-muted: var(--color-muted-foreground);
+
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-display: var(--font-display);
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Base layer                                                                */
+/* -------------------------------------------------------------------------- */
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background: radial-gradient(
+      ellipse at 50% 20%,
+      var(--color-cream-white) 0%,
+      var(--color-pale-yellow-green) 40%,
+      var(--color-sage) 75%,
+      var(--color-dusty-teal) 100%
+    );
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+body::selection {
+  background: var(--color-gold-bright);
+  color: var(--color-ink);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Utility helpers                                                           */
+/* -------------------------------------------------------------------------- */
+
+/* Reusable fluid type ramp using clamp() for mobile-first scaling.
+
+   Hierarchy intent: the celebrant's name stays the dominant element, but the
+   event label ("Mis XV Años") is now clearly readable instead of a hairline
+   eyebrow. Name is no longer comically oversized, so the two elements read as
+   a deliberate pairing rather than a mismatch. */
+.text-clamp-name {
+  font-size: clamp(4rem, 19vw, 14rem);
+  line-height: 0.86;
+  letter-spacing: 0.01em;
+}
+.text-clamp-eyebrow {
+  font-size: clamp(1rem, 3.6vw, 1.45rem);
+  letter-spacing: 0.32em;
+}
+.text-clamp-sub {
+  font-size: clamp(1rem, 3.2vw, 1.6rem);
+}
+.text-clamp-count {
+  font-size: clamp(1.75rem, 6vw, 2.75rem);
+}
+
+/* Frosted-glass card used for countdown units. */
+.glass-card {
+  background: var(--color-glass);
+  border: 1px solid var(--color-glass-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 10px 28px var(--color-leaf-shadow);
+  backdrop-filter: blur(8px);
+}
+
+.display-glow {
+  color: var(--color-cream-bright);
+  text-shadow:
+    0 1px 0 var(--color-ink),
+    0 2px 2px var(--color-ink),
+    0 0 18px rgba(199, 154, 60, 0.85),
+    0 0 36px rgba(199, 154, 60, 0.45),
+    0 10px 30px rgba(33, 58, 50, 0.45);
+  -webkit-text-stroke: 1px rgba(33, 58, 50, 0.6);
+  paint-order: stroke fill;
+}
+
+/* Premium gold treatment for the celebrant's name — a "princess movie title"
+   look: a vertical gold gradient clipped to the glyph, a dark forest-green
+   outline for separation from the green backdrop, and layered drop-shadows
+   for a soft amber halo + deep cast shadow.
+
+   `filter: drop-shadow` is used instead of `text-shadow` because the text
+   fill is transparent (gradient is clipped via background-clip); text-shadow
+   would not render on transparent fills. `color` stays a solid gold as a
+   fallback for any browser without `background-clip: text`, so the name is
+   always legible. `paint-order: stroke fill` keeps the stroke beneath the
+   fill so the gradient stays crisp on the glyph face. */
+.title-gold {
+  color: var(--color-gold-bright);
+  background-image: linear-gradient(
+    180deg,
+    var(--color-cream-bright) 0%,
+    var(--color-gold-bright) 32%,
+    var(--color-gold) 60%,
+    var(--color-gold-soft) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 1.5px rgba(33, 58, 50, 0.78);
+  paint-order: stroke fill;
+  filter:
+    drop-shadow(0 2px 1px rgba(33, 58, 50, 0.55))
+    drop-shadow(0 0 16px rgba(199, 154, 60, 0.5))
+    drop-shadow(0 10px 26px rgba(33, 58, 50, 0.38));
+}
+
+.leaf-panel {
+  background:
+    linear-gradient(180deg, rgba(249, 252, 228, 0.52), rgba(238, 248, 200, 0.26)),
+    rgba(249, 252, 228, 0.3);
+  border: 1px solid rgba(33, 58, 50, 0.18);
+  box-shadow: 0 16px 42px rgba(33, 58, 50, 0.16);
+  backdrop-filter: blur(10px);
+}
+
+/* Hairline rule used by Art Deco motifs, tuned to the new gold. */
+.gold-hairline {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-gold) 50%,
+    transparent
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Ambient keyframe animations                                               */
+/* -------------------------------------------------------------------------- */
+
+@keyframes firefly-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate3d(var(--drift-x), var(--drift-y), 0);
+    opacity: 0.5;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes frog-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes gold-shimmer {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.firefly {
+  animation: firefly-drift var(--drift-duration, 14s) ease-in-out infinite;
+  animation-delay: var(--drift-delay, 0s);
+}
+
+.frog-bob {
+  animation: frog-bob 5s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+.gold-shimmer {
+  animation: gold-shimmer 6s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Reduced motion                                                            */
+/*  Decorative animation is disabled when the visitor prefers reduced motion */
+/*  so the page never distracts or triggers vestibular discomfort.            */
+/* -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .firefly,
+  .frog-bob,
+  .gold-shimmer {
+    animation: none !important;
+  }
+
+  /* Reveal transitions resolve instantly instead of fading in. */
+  .reveal-on-mount {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
