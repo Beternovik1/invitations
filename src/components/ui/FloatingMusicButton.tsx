@@ -1,0 +1,209 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { MUSIC } from "@/lib/constants";
+
+/**
+ * Persistent, single-song, user-controlled music control pinned to a corner of
+ * the invitation.
+ *
+ * Playback is strictly user-initiated — no autoplay, no programmatic play on
+ * mount or scroll. The `<audio>` element only renders when `MUSIC.enabled` is
+ * true AND `MUSIC.audioPath` is non-empty, so the page never wires a missing
+ * audio file against an active `<audio>`. While disabled the control renders a
+ * calm, on-brand "soon" state that stays tappable out of curiosity without
+ * starting anything. Play-promise rejections are absorbed (NotAllowedError,
+ * AbortError) so a browser that blocks playback never throws to the console.
+ *
+ * It is `fixed` so it stays in its corner across the whole single-page scroll,
+ * sitting visually inside the page-level `<OrnamentalFrame>` but above the
+ * content (z-index higher than the section stack). Safe-area spacing keeps it
+ * off the rounded screen edges and notches, and a responsive gap keeps it clear
+ * of tiny-phone content. Reduced-motion visitors get the same control with no
+ * motion.
+ */
+export default function FloatingMusicButton() {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+
+  const enabled = MUSIC.enabled && MUSIC.audioPath.length > 0;
+
+  // Keep local state in sync with the audio element's real events so pause
+  // from system media controls, sleep, or another tab is reflected here too.
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+
+    const onPlay = () => {
+      setIsPlaying(true);
+      setBlocked(false);
+    };
+    const onPause = () => setIsPlaying(false);
+    const onEnded = () => {
+      setIsPlaying(false);
+      // `loop` is false by default; when not looping, rewind so the next tap
+      // replays from the start rather than the paused end.
+      if (!MUSIC.loop) el.currentTime = 0;
+    };
+
+    el.addEventListener("play", onPlay);
+    el.addEventListener("pause", onPause);
+    el.addEventListener("ended", onEnded);
+    return () => {
+      el.removeEventListener("play", onPlay);
+      el.removeEventListener("pause", onPause);
+      el.removeEventListener("ended", onEnded);
+    };
+  }, []);
+
+  const togglePlay = useCallback(async () => {
+    const el = audioRef.current;
+    if (!el) return;
+
+    if (isPlaying) {
+      el.pause();
+      return;
+    }
+
+    setBlocked(false);
+    try {
+      // Play() returns a Promise; awaiting it surfaces NotAllowedError when
+      // the browser blocks playback, which we treat as a soft "blocked"
+      // state rather than letting the rejection bubble up.
+      await el.play();
+    } catch (err) {
+      const name = err instanceof DOMException ? err.name : "";
+      // AbortError fires when play() is interrupted by a fast pause() call —
+      // not a real error, just leave current state alone.
+      if (name === "AbortError") return;
+      setIsPlaying(false);
+      setBlocked(true);
+    }
+  }, [isPlaying]);
+
+  const titleLine = `${MUSIC.title} · ${MUSIC.artist}`;
+
+  // ----- Disabled state: no audio wired yet -------------------------------
+  if (!enabled) {
+    return (
+      <div
+        className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1.5 sm:bottom-8 sm:right-8 lg:bottom-10 lg:right-10"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)", paddingRight: "env(safe-area-inset-right)" }}
+      >
+        <span
+          className="pointer-events-auto max-w-[14rem] truncate rounded-full bg-[var(--color-cream-white)]/85 px-3 py-1 font-sans text-[0.66rem] uppercase tracking-[0.18em] text-[var(--color-ink-soft)] shadow-[0_6px_18px_rgba(33,58,50,0.18)] backdrop-blur"
+          style={{ fontFamily: "var(--font-sans)" }}
+        >
+          {titleLine} · Próximamente
+        </span>
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          aria-label="Reproductor de música próximamente disponible"
+          className="pointer-events-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-glass-border)] bg-[var(--color-cream-white)]/85 text-[var(--color-ink-soft)] shadow-[0_8px_22px_rgba(33,58,50,0.22)] backdrop-blur cursor-not-allowed sm:h-14 sm:w-14"
+        >
+          <NoteGlyph />
+        </button>
+      </div>
+    );
+  }
+
+  // ----- Active state: audio is wired, user controls playback --------------
+  const buttonLabel = isPlaying
+    ? `Pausar ${MUSIC.title}`
+    : `Reproducir ${MUSIC.title}`;
+
+  return (
+    <div
+      className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1.5 sm:bottom-8 sm:right-8 lg:bottom-10 lg:right-10"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)", paddingRight: "env(safe-area-inset-right)" }}
+    >
+      {isPlaying && (
+        <span
+          className="max-w-[14rem] truncate rounded-full bg-[var(--color-cream-white)]/85 px-3 py-1 font-sans text-[0.66rem] uppercase tracking-[0.18em] text-[var(--color-ink)] shadow-[0_6px_18px_rgba(33,58,50,0.18)] backdrop-blur"
+          style={{ fontFamily: "var(--font-sans)" }}
+        >
+          {titleLine}
+        </span>
+      )}
+
+      <button
+        type="button"
+        onClick={togglePlay}
+        aria-label={buttonLabel}
+        aria-pressed={isPlaying}
+        className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-gold)] bg-[var(--color-cream-white)] text-[var(--color-gold-soft)] shadow-[0_8px_22px_rgba(33,58,50,0.28)] transition-colors hover:bg-[var(--color-gold)] hover:text-[var(--color-cream-white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-cream-white)] sm:h-14 sm:w-14"
+        style={{ fontFamily: "var(--font-sans)" }}
+      >
+        {isPlaying ? <PauseGlyph /> : <PlayGlyph />}
+      </button>
+
+      {blocked && (
+        <span
+          className="max-w-[14rem] rounded-full bg-[var(--color-cream-white)]/85 px-3 py-1 text-center font-sans text-[0.66rem] text-[var(--color-ink-dim)] shadow-[0_6px_18px_rgba(33,58,50,0.18)] backdrop-blur"
+          style={{ fontFamily: "var(--font-sans)" }}
+        >
+          El navegador bloqueó la reproducción. Toca de nuevo.
+        </span>
+      )}
+
+      {/* The <audio> element renders only when a real track is configured. */}
+      <audio
+        ref={audioRef}
+        src={MUSIC.audioPath}
+        loop={MUSIC.loop}
+        preload="none"
+      />
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Decorative glyphs                                                         */
+/* -------------------------------------------------------------------------- */
+
+function NoteGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true" fill="none">
+      <path
+        d="M9 17.5a2.5 2.5 0 1 1-2.5-2.5A2.5 2.5 0 0 1 9 17.5Z"
+        fill="currentColor"
+        opacity="0.7"
+      />
+      <path
+        d="M8.5 15V5.2a1 1 0 0 1 .74-.97l7-1.8A1 1 0 0 1 17.5 3.4v9.1"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M17.5 14.5a2.5 2.5 0 1 1-2.5-2.5 2.5 2.5 0 0 1 2.5 2.5Z"
+        fill="currentColor"
+        opacity="0.7"
+      />
+    </svg>
+  );
+}
+
+function PlayGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" fill="none">
+      <path
+        d="M8 5.5v13a1 1 0 0 0 1.52.85l10-6.5a1 1 0 0 0 0-1.7l-10-6.5A1 1 0 0 0 8 5.5Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function PauseGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" fill="none">
+      <rect x="7" y="5" width="3.5" height="14" rx="1" fill="currentColor" />
+      <rect x="13.5" y="5" width="3.5" height="14" rx="1" fill="currentColor" />
+    </svg>
+  );
+}
