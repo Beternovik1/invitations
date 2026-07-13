@@ -7,7 +7,6 @@ import { ASSETS, EVENT } from "@/lib/constants";
 import BeadDivider from "@/components/ui/BeadDivider";
 import Countdown from "@/components/ui/Countdown";
 import Fireflies from "@/components/ui/Fireflies";
-import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -40,25 +39,14 @@ export default function Hero() {
   return (
     <section
       className="relative isolate flex min-h-[100dvh] w-full flex-col items-center justify-center overflow-hidden px-6 py-16 text-center"
-      // Twilight bayou gradient backdrop. Inline-styled so it composites layers
-      // (radial glow + linear depth) without expanding the Tailwind surface API.
-      style={{
-        background: `
-          radial-gradient(90% 70% at 50% 12%, rgba(249, 252, 228, 0.95) 0%, rgba(238, 248, 200, 0.4) 48%, transparent 72%),
-          radial-gradient(70% 55% at 50% 88%, rgba(119, 162, 145, 0.32) 0%, rgba(184, 219, 160, 0) 68%),
-          linear-gradient(180deg, var(--color-cream-white) 0%, var(--color-pale-yellow-green) 34%, var(--color-sage) 70%, var(--color-dusty-teal) 100%)
-        `,
-      }}
+      // Hero no longer paints its own backdrop or its own border: it
+      // participates in the continuous `.page-atmosphere` layer mounted on the
+      // page so the opening tone journey is shared with the rest of the
+      // sections instead of cutting in a separate color block, and the page-
+      // level `<OrnamentalFrame>` in `page.tsx` now frames the whole scroll
+      // (hero through last element) so the hero keeps just its fireflies,
+      // title, portrait and countdown.
     >
-      {/* Responsive gold decorative border framing the hero. Pure SVG via
-          OrnamentalFrame: a double gold rule, floral corner curls, a pink gem
-          crowning the top edge and a dusty-teal gem anchoring the bottom.
-          Decorative only — aria-hidden + pointer-events-none keep it out of
-          the a11y tree and never block interaction. Sits at z-0, behind the
-          fireflies and the content stack (z-10). Responsive inset padding
-          keeps it from crowding the content on small screens. */}
-      <OrnamentalFrame className="inset-3 sm:inset-4 lg:inset-5" />
-
       <Fireflies />
 
       <motion.div

@@ -105,13 +105,13 @@
   }
 
   body {
-    background: radial-gradient(
-      ellipse at 50% 20%,
-      var(--color-cream-white) 0%,
-      var(--color-pale-yellow-green) 40%,
-      var(--color-sage) 75%,
-      var(--color-dusty-teal) 100%
-    );
+    /* Flat base color only — the living atmosphere is painted by the
+       `.page-atmosphere` layer in `page.tsx`, which is fixed to the viewport
+       so it reads as one continuous backdrop across the entire single-page
+       scroll instead of resetting per section. Keeping the body fill flat
+       avoids double-painting a large radial gradient and reduces first
+       paint cost (better LCP). */
+    background-color: var(--color-cream-white);
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -223,8 +223,95 @@ body::selection {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Continuous page atmosphere                                                */
+/*  One full-page backdrop cover so the whole single-page scroll shares a     */
+/*  single tone journey (cream → pale-yellow-green → sage → dusty teal)       */
+/*  instead of each section painting its own color block. Fixed to the        */
+/*  viewport so it never resets while scrolling, with two slow drifting      */
+/*  radial "lights" layered on top to keep the air alive without per-section  */
+/*  color swaps. Purely decorative — `aria-hidden` + `pointer-events-none`    */
+/*  keep it out of the a11y tree and interaction path.                        */
+/* -------------------------------------------------------------------------- */
+
+.page-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  /* The single continuous color journey. The top radial lifts a cream haze at
+     the opening of the page, the bottom radial deepens the cool teal at the
+     close, and the linear gradient stitches them into one continuous tone. */
+  background:
+    radial-gradient(120% 75% at 50% 8%, var(--color-cream-white) 0%, rgba(249, 252, 228, 0) 58%),
+    radial-gradient(120% 80% at 50% 96%, rgba(119, 162, 145, 0.34) 0%, rgba(119, 162, 145, 0) 62%),
+    linear-gradient(
+      168deg,
+      var(--color-cream-white) 0%,
+      var(--color-pale-yellow-green) 30%,
+      var(--color-sage) 62%,
+      var(--color-dusty-teal) 100%
+    );
+}
+
+/* Two soft drifting blooms that breathe slowly — a warm cream glow opening
+   from the top-left and a cool teal glow settling at the bottom-right. They
+   animate transform + opacity only (no layout properties) so they stay cheap
+   for INP and never cause layout shift. `mix-blend-mode: soft-light` lets
+   them tint the gradient beneath without flattening it. */
+.page-atmosphere::before,
+.page-atmosphere::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  mix-blend-mode: soft-light;
+  will-change: transform, opacity;
+}
+
+.page-atmosphere::before {
+  width: 38vmax;
+  height: 38vmax;
+  left: -6vmax;
+  top: -8vmax;
+  background: radial-gradient(circle, rgba(249, 252, 228, 0.92) 0%, rgba(249, 252, 228, 0) 70%);
+  animation: atmosphere-drift-a 26s ease-in-out infinite alternate;
+}
+
+.page-atmosphere::after {
+  width: 42vmax;
+  height: 42vmax;
+  right: -8vmax;
+  bottom: -10vmax;
+  background: radial-gradient(circle, rgba(119, 162, 145, 0.7) 0%, rgba(119, 162, 145, 0) 70%);
+  animation: atmosphere-drift-b 32s ease-in-out infinite alternate;
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Ambient keyframe animations                                               */
 /* -------------------------------------------------------------------------- */
+
+@keyframes atmosphere-drift-a {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate3d(4vmax, 3vmax, 0) scale(1.08);
+    opacity: 0.6;
+  }
+}
+
+@keyframes atmosphere-drift-b {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1.02);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate3d(-3vmax, -4vmax, 0) scale(1);
+    opacity: 0.55;
+  }
+}
 
 @keyframes firefly-drift {
   0% {
@@ -292,6 +379,16 @@ body::selection {
   .frog-bob,
   .gold-shimmer {
     animation: none !important;
+  }
+
+  /* The drifting page-atmosphere lights resolve to their resting state so the
+     continuous tone stays calm and never moves for visitors who prefer
+     reduced motion. The static gradient backdrop remains. */
+  .page-atmosphere::before,
+  .page-atmosphere::after {
+    animation: none !important;
+    opacity: 0.5 !important;
+    transform: none !important;
   }
 
   /* Reveal transitions resolve instantly instead of fading in. */

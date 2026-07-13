@@ -43,7 +43,7 @@ export const metadata: Metadata = {
         url: ASSETS.ogImage,
         width: 1200,
         height: 630,
-        alt: "Lupita — celebración de XV años",
+        alt: "Sarahí — celebración de XV años",
       },
     ],
   },

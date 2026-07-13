@@ -1,5 +1,5 @@
 /**
- * Event content for Lupita's quinceañera invitation.
+ * Event content for Sarahí's quinceañera invitation.
  *
  * Keep event-specific copy out of components; components consume these
  * constants so the invitation can be retuned without touching JSX.
@@ -41,7 +41,7 @@ export const EVENT = {
 export const ASSETS = {
   bayouBackground: "/bayou-background-placeholder.jpg",
   goldFrame: "/gold-frame-placeholder.png",
-  ogImage: "/og-image.jpg",
+  ogImage: "/sarahi-portrait.png",
   heroPortrait: "/sarahi-portrait.png",
 } as const;
 
@@ -52,9 +52,101 @@ export const ASSETS = {
  * final deployment URL before going live.
  */
 export const SITE = {
-  url: "https://invitaciones-lupita.example",
-  title: "Lupita — Mis XV Años",
+  url: "https://invitaciones-sarahi.example",
+  title: "Sarahí — Mis XV Años",
   description:
     "Acompáñame a celebrar mis XV años. Una noche de cuento entre luces del bayou y música de Nueva Orleans.",
   locale: "es_MX",
 } as const;
+
+/**
+ * Single favorite song for the celebration.
+ *
+ * Placeholder copy for the one non-vals song Sarahí loves — the vals is a
+ * surprise for guests and must not appear here. Browsers block audio
+ * autoplay without a user gesture, so the player is user-controlled only:
+ * playback starts on a tap/click. `enabled: false` plus an empty
+ * `audioPath` keep the player in a clear "soon" state so no `<audio>`
+ * element is rendered against a missing file. `loop` defaults to false;
+ * flip it on per-song if the chosen track is meant to loop under the
+ * evening. Drop the real track in and set `enabled: true` and
+ * `audioPath` to the public asset path to activate.
+ */
+export const MUSIC = {
+  enabled: false,
+  title: "Canción favorita de Sarahí",
+  artist: "Por confirmar",
+  note: "La canción especial de Sarahí estará disponible aquí.",
+  audioPath: "",
+  loop: false,
+} as const;
+
+/**
+ * Ceremony and reception locations.
+ *
+ * Placeholders only — venue names, addresses and map URLs are generic so a
+ * designer can replace them without refactoring the component. `mapsUrl`
+ * opens in a new tab from the location cards.
+ */
+export const LOCATIONS = [
+  {
+    id: "ceremony",
+    kind: "ceremony",
+    label: "Ceremonia",
+    time: "18:00 hrs",
+    venue: "Parroquia San José",
+    address: "Av. Reforma 123, Ciudad de México",
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Ciudad+de+Mexico",
+  },
+  {
+    id: "reception",
+    kind: "reception",
+    label: "Recepción",
+    time: "19:00 hrs",
+    venue: "Salón Cristal",
+    address: "Calz. de las Palmas 456, Ciudad de México",
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Ciudad+de+Mexico",
+  },
+] as const;
+
+/**
+ * Order of the evening, adapted to a quinceañera: ceremony, reception,
+ * dinner, the waltz, and the dance. Order carries information here, which is
+ * why the itinerary renders as a timeline rather than an unordered grid.
+ */
+export const ITINERARY = [
+  { time: "18:00", title: "Ceremonia", description: "Ceremonia religiosa" },
+  { time: "19:00", title: "Recepción", description: "Recepción de invitados" },
+  { time: "20:30", title: "Cena", description: "Cena de gala" },
+  { time: "21:30", title: "Vals", description: "El vals de Sarahí" },
+  { time: "22:00", title: "Baile", description: "Baile y fiesta" },
+] as const;
+
+/**
+ * Dress code for guests. "Esmeralda y dorado" is a classic XV palette; the
+ * swatch hexes are content, not theme tokens, so the dress code can diverge
+ * from the invitation's own sage/teal palette.
+ */
+export const DRESS_CODE = {
+  title: "Esmeralda y dorado",
+  note: "Te invitamos a acompañarnos en tonos esmeralda y dorado para brillar juntos esta noche.",
+  palette: [
+    { name: "Esmeralda", hex: "#0f5132" },
+    { name: "Dorado", hex: "#c79a3c" },
+  ],
+} as const;
+
+/**
+ * Gallery placeholders.
+ *
+ * No real images are referenced — `tone` drives a CSS gradient placeholder
+ * so the grid never shows missing-image artifacts. Captions use generic
+ * moment names; real asset paths can be added later without touching the
+ * component.
+ */
+export const GALLERY = [
+  { id: "welcome", caption: "Bienvenida", tone: "sage" },
+  { id: "ceremony", caption: "Ceremonia", tone: "teal" },
+  { id: "waltz", caption: "El vals", tone: "gold" },
+  { id: "party", caption: "La fiesta", tone: "cream" },
+] as const;

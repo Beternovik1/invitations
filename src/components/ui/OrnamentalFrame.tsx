@@ -21,13 +21,19 @@
  *   3. Two gem SVGs (top = pink, bottom = dusty-teal) centered on the frame's
  *      top/bottom rules.
  *
- * The wrapper accepts `className` so the caller controls the inset/padding
- * that keeps the frame from crowding the hero content on small screens.
+ * The wrapper accepts `className` so the caller controls the positioning and
+ * inset/padding. At page level it is mounted `fixed` so the border stays
+ * pinned to the viewport across the entire single-page scroll, framing every
+ * section from the hero through the last element; `pointer-events-none` keeps
+ * it from blocking interaction and a low z-index keeps it above the continuous
+ * `.page-atmosphere` backdrop but below the section content.
  */
 
 interface OrnamentalFrameProps {
-  /** Tailwind classes for the absolute wrapper — typically `inset-*` to tune
-   *  how close the frame sits to the section edges across breakpoints. */
+  /** Tailwind classes for the wrapper — positioning plus `inset-*` to tune how
+   *  close the frame sits to the viewport edges across breakpoints. Defaults
+   *  to a `fixed` page-level frame so the border carries across the whole
+   *  scroll. */
   className?: string;
 }
 
@@ -42,12 +48,12 @@ const TEAL_GEM = "#77a291";
 const TEAL_GEM_LIGHT = "#b9d4c9";
 
 export default function OrnamentalFrame({
-  className = "inset-3 sm:inset-6 lg:inset-10",
+  className = "fixed inset-3 sm:inset-4 lg:inset-5",
 }: OrnamentalFrameProps) {
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none absolute z-0 ${className}`}
+      className={`pointer-events-none z-0 ${className}`}
     >
       {/* --- Layer 1: full-bleed straight gold frame ---------------------- */}
       <svg
