@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import AdminShell from "@/app/admin/_components/AdminShell";
-import { logoutAction } from "@/app/admin/rsvps/actions";
+import AdminPageHeader from "@/app/admin/_components/AdminPageHeader";
 import {
   isAdminAccessConfigured,
   isAdminAuthenticated,
@@ -17,74 +16,33 @@ import {
 /**
  * Read-only RSVP admin overview.
  *
- * This is the "slice of the cake" the host (mom) opens to see who has confirmed
- * without giving her any editing power in this slice. It is a Server Component:
- * the service-role Supabase access and the cookie verification both run on the
- * server, so nothing private is ever shipped to the browser.
+ * This is the "slice of the cake" the host (mom) opens to see who has
+ * confirmed without giving her any editing power. It is a Server Component:
+ * the service-role Supabase access and the cookie verification both run on
+ * the server, so nothing private is ever shipped to the browser.
  *
- * Access model (MVP, no full auth system):
+ * Access is gated twice: the dashboard layout handles the shared redirect/chrome
+ * contract, and this page repeats the auth check immediately before calling the
+ * private data boundary. That keeps the security decision next to the private
+ * fetch even if the page is refactored or reused later.
  *
- *   1. If `ADMIN_ACCESS_KEY` is not set in the environment, the page renders a
- *      "setup required" screen and DOES NOT fetch any guest data. This avoids
- *      silently serving a confusing empty table on a misconfigured deploy and
- *      makes the missing-secret obvious.
- *   2. If the env key is set but the request does not carry a valid signed admin
- *      session cookie, the page redirects to `/admin/login` to start a session.
- *      The access key never appears in a URL; it is exchanged for a cookie once
- *      at login.
- *   3. Only after the cookie is verified does the page call the boundary and
- *      render the summary cards + per-group table. A logout form in the header
- *      clears the cookie and returns to the login screen.
- *
- * The route is `force-dynamic` because it reads the session cookie at request
- * time and because new RSVPs must appear on every reload without a redeploy —
- * the overview is a live read, not a cached page.
- *
- * `robots: noindex` keeps the admin URL out of search engines regardless of the
- * access gate. The gate is not a substitute for keeping the URL private.
+ * The route is dynamic via the layout's `force-dynamic`, so new RSVPs appear
+ * on every reload without a redeploy — the overview is a live read, not a
+ * cached page. `title` is merged with the layout's `robots: noindex` so the
+ * admin URL stays out of search engines without restating it here.
  */
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
-  title: "RSVP overview · Sarahi XV",
-  robots: { index: false, follow: false },
+  title: "RSVP overview",
 };
 
 export default async function AdminRsvpsPage() {
-  // Setup-required screen: never fetch guest data while the secret is unset.
-  if (!isAdminAccessConfigured()) {
-    return <SetupRequired />;
-  }
-
-  // No valid session: send the visitor to sign in rather than rendering a
-  // denied screen. The access key is never placed in a URL.
-  if (!(await isAdminAuthenticated())) {
+  if (!isAdminAccessConfigured() || !(await isAdminAuthenticated())) {
     redirect("/admin/login");
   }
 
   const groups = await getActiveGuestGroupsWithRsvp();
   return <AdminOverview groups={groups} />;
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Setup required                                                            */
-/* -------------------------------------------------------------------------- */
-
-function SetupRequired() {
-  return (
-    <AdminShell title="Setup required" eyebrow="admin">
-      <p className="max-w-prose">
-        The RSVP overview is gated by an <code>ADMIN_ACCESS_KEY</code>{" "}
-        environment variable, and it is not set on this deployment.
-      </p>
-      <p className="mt-4 max-w-prose text-(--color-ink-dim)">
-        Set <code>ADMIN_ACCESS_KEY</code> to a long, randomly generated string
-        (for example, 32+ characters) in your hosting environment, then open
-        <code className="mx-1">/admin/login</code>.
-      </p>
-    </AdminShell>
-  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -95,11 +53,9 @@ function AdminOverview({ groups }: { groups: AdminGuestGroup[] }) {
   const summary = computeSummary(groups);
 
   return (
-    <AdminShell
-      title="RSVP overview"
-      eyebrow="admin"
-      headerActions={<LogoutForm />}
-    >
+    <section>
+      <AdminPageHeader title="RSVP overview" eyebrow="admin" />
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <SummaryCard
           label="Assigned seats"
@@ -131,23 +87,7 @@ function AdminOverview({ groups }: { groups: AdminGuestGroup[] }) {
       <div className="mt-10">
         <GroupTable groups={groups} />
       </div>
-    </AdminShell>
-  );
-}
-
-/** Logout form bound to the `logoutAction` Server Action. A plain form action
- *  in a Server Component works without client JS (progressive enhancement) and
- *  the cookie-clearing stays server-only. */
-function LogoutForm() {
-  return (
-    <form action={logoutAction}>
-      <button
-        type="submit"
-        className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-4 py-2 text-xs uppercase tracking-[0.16em] text-(--color-ink-dim) transition hover:border-(--color-gold)/50 hover:text-(--color-ink)"
-      >
-        Sign out
-      </button>
-    </form>
+    </section>
   );
 }
 
