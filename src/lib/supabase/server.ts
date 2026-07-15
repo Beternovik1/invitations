@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { GuestGroup } from "@/lib/guest-groups";
+import type { AdminGuestGroup } from "@/lib/admin-overview";
 import type { Rsvp } from "@/lib/rsvps";
 
 /**
@@ -201,6 +202,79 @@ export async function fetchRsvpBySlugFromSupabase(
   const row = rows[0];
   if (!row) return null;
   return mapRsvpRow(row);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Admin overview (read-only join of guest_groups + rsvps)                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Row shape returned by the `guest_groups` REST endpoint when the `rsvps`
+ * embedded resource is selected. Depending on PostgREST's relationship
+ * detection, the one-RSVP-per-group relation may be embedded as a single object
+ * (one-to-one) or as an array (one-to-many). No-match responses may be `[]` or
+ * `null`, so the mapper tolerates all four shapes.
+ */
+interface GuestGroupWithRsvpRow extends GuestGroupRow {
+  rsvps: RsvpRow | RsvpRow[] | null;
+}
+
+/**
+ * Maps a `guest_groups` row that includes its embedded `rsvps` into an
+ * `AdminGuestGroup`. Assumes one RSVP per group (the table's PK guarantees
+ * this): the first embedded row wins, the rest is discarded.
+ */
+function mapRowWithRsvp(row: GuestGroupWithRsvpRow): AdminGuestGroup {
+  const rsvpRow = Array.isArray(row.rsvps)
+    ? (row.rsvps[0] ?? null)
+    : row.rsvps;
+  return {
+    ...mapRow(row),
+    rsvp: rsvpRow ? mapRsvpRow(rsvpRow) : null,
+  };
+}
+
+/**
+ * All active guest groups with their RSVP joined in, ascending by slug.
+ *
+ * Uses PostgREST's embedded resource selection (`select=...,rsvps(...)`) so the
+ * join happens server-side in a single round-trip. Because `rsvps` is the
+ * plural table name and `rsvps.guest_group_slug` is the only foreign key into
+ * `guest_groups`, PostgREST resolves the embedding name unambiguously.
+ *
+ * Inactive groups (`is_active = false`) are excluded — they must not appear in
+ * the admin overview. Groups with no RSVP still appear: the embedded `rsvps`
+ * array is `[]` for them, so the boundary returns them with `rsvp: null`.
+ * `assigned_seats = null` (pending seat count) does not exclude a group either.
+ *
+ * `cache: "no-store"` keeps the overview fresh so new RSVPs appear immediately
+ * on reload without a redeploys — the admin overview is the one screen where
+ * "is mom seeing the latest?" actually matters.
+ */
+export async function fetchAllActiveGuestGroupsWithRsvpFromSupabase(): Promise<
+  AdminGuestGroup[]
+> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${REST_PATH}` +
+    `?is_active=eq.true` +
+    `&select=${COLUMNS},rsvps(${RSVP_COLUMNS})` +
+    `&order=slug.asc`;
+
+  const res = await fetch(url, {
+    headers: authHeaders(serviceRoleKey),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase admin overview request failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: GuestGroupWithRsvpRow[] = await res.json();
+  return rows.map(mapRowWithRsvp);
 }
 
 /**
