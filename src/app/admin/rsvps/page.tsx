@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
+import AdminShell from "@/app/admin/_components/AdminShell";
+import { logoutAction } from "@/app/admin/rsvps/actions";
+import {
+  isAdminAccessConfigured,
+  isAdminAuthenticated,
+} from "@/lib/admin-access";
 import {
   getActiveGuestGroupsWithRsvp,
   rsvpStatusFor,
@@ -12,8 +19,8 @@ import {
  *
  * This is the "slice of the cake" the host (mom) opens to see who has confirmed
  * without giving her any editing power in this slice. It is a Server Component:
- * the service-role Supabase access and the `ADMIN_ACCESS_KEY` check both run on
- * the server, so nothing private is ever shipped to the browser.
+ * the service-role Supabase access and the cookie verification both run on the
+ * server, so nothing private is ever shipped to the browser.
  *
  * Access model (MVP, no full auth system):
  *
@@ -21,21 +28,20 @@ import {
  *      "setup required" screen and DOES NOT fetch any guest data. This avoids
  *      silently serving a confusing empty table on a misconfigured deploy and
  *      makes the missing-secret obvious.
- *   2. If the env key is set, the request MUST carry `?key=` matching it. A
- *      missing or mismatched key renders an "access denied" screen and DOES
- *      NOT fetch guest data, so probing `/admin/rsvps` without the key cannot
- *      leak confirmations.
- *   3. Only after the key matches does the page call the boundary and render
- *      the summary cards + per-group table.
+ *   2. If the env key is set but the request does not carry a valid signed admin
+ *      session cookie, the page redirects to `/admin/login` to start a session.
+ *      The access key never appears in a URL; it is exchanged for a cookie once
+ *      at login.
+ *   3. Only after the cookie is verified does the page call the boundary and
+ *      render the summary cards + per-group table. A logout form in the header
+ *      clears the cookie and returns to the login screen.
  *
- * The route is `force-dynamic` because it reads `searchParams.key` (already
- * dynamic since Next 15) and because new RSVPs must appear on every reload
- * without a redeploys — the overview is a live read, not a cached page.
+ * The route is `force-dynamic` because it reads the session cookie at request
+ * time and because new RSVPs must appear on every reload without a redeploy —
+ * the overview is a live read, not a cached page.
  *
  * `robots: noindex` keeps the admin URL out of search engines regardless of the
- * access gate. The gate is not a substitute for keeping the URL private: the
- * shareable link itself is the password, so mom must share it only with people
- * she trusts.
+ * access gate. The gate is not a substitute for keeping the URL private.
  */
 
 export const dynamic = "force-dynamic";
@@ -45,30 +51,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-interface PageProps {
-  searchParams: Promise<{ key?: string | string[] }>;
-}
-
-export default async function AdminRsvpsPage({ searchParams }: PageProps) {
-  const { key } = await searchParams;
-  const adminKey = process.env.ADMIN_ACCESS_KEY;
-
+export default async function AdminRsvpsPage() {
   // Setup-required screen: never fetch guest data while the secret is unset.
-  if (!adminKey) {
+  if (!isAdminAccessConfigured()) {
     return <SetupRequired />;
   }
 
-  // Normalize `key` to a single string. `searchParams.key` can be undefined,
-  // a string, or an array (repeated `?key=a&key=b`); only the first value is
-  // meaningful for an MVP single-secret scheme.
-  const providedKey = Array.isArray(key) ? (key[0] ?? "") : (key ?? "");
-
-  // Access-denied screen: never fetch guest data when the key is missing or
-  // wrong. Use a plain `===` check rather than `crypto.timingSafeEqual` — the
-  // access URL itself is the secret here, so a timing leak is not meaningfully
-  // worse than someone seeing the URL in a referer/messaging log.
-  if (!providedKey || providedKey !== adminKey) {
-    return <AccessDenied />;
+  // No valid session: send the visitor to sign in rather than rendering a
+  // denied screen. The access key is never placed in a URL.
+  if (!(await isAdminAuthenticated())) {
+    redirect("/admin/login");
   }
 
   const groups = await getActiveGuestGroupsWithRsvp();
@@ -81,7 +73,7 @@ export default async function AdminRsvpsPage({ searchParams }: PageProps) {
 
 function SetupRequired() {
   return (
-    <AdminShell title="Setup required">
+    <AdminShell title="Setup required" eyebrow="admin">
       <p className="max-w-prose">
         The RSVP overview is gated by an <code>ADMIN_ACCESS_KEY</code>{" "}
         environment variable, and it is not set on this deployment.
@@ -89,26 +81,7 @@ function SetupRequired() {
       <p className="mt-4 max-w-prose text-(--color-ink-dim)">
         Set <code>ADMIN_ACCESS_KEY</code> to a long, randomly generated string
         (for example, 32+ characters) in your hosting environment, then open
-        <code className="mx-1">/admin/rsvps?key=YOUR_KEY</code>.
-      </p>
-    </AdminShell>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Access denied                                                             */
-/* -------------------------------------------------------------------------- */
-
-function AccessDenied() {
-  return (
-    <AdminShell title="Access denied">
-      <p className="max-w-prose">
-        A <code>key</code> query parameter is required to view this page.
-      </p>
-      <p className="mt-4 max-w-prose text-(--color-ink-dim)">
-        Open the overview with the access key you were given, e.g.
-        <code className="mx-1">/admin/rsvps?key=YOUR_KEY</code>. The key is
-        intentionally not linked anywhere on the public invitation.
+        <code className="mx-1">/admin/login</code>.
       </p>
     </AdminShell>
   );
@@ -122,7 +95,11 @@ function AdminOverview({ groups }: { groups: AdminGuestGroup[] }) {
   const summary = computeSummary(groups);
 
   return (
-    <AdminShell title="RSVP overview">
+    <AdminShell
+      title="RSVP overview"
+      eyebrow="admin"
+      headerActions={<LogoutForm />}
+    >
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <SummaryCard
           label="Assigned seats"
@@ -155,6 +132,22 @@ function AdminOverview({ groups }: { groups: AdminGuestGroup[] }) {
         <GroupTable groups={groups} />
       </div>
     </AdminShell>
+  );
+}
+
+/** Logout form bound to the `logoutAction` Server Action. A plain form action
+ *  in a Server Component works without client JS (progressive enhancement) and
+ *  the cookie-clearing stays server-only. */
+function LogoutForm() {
+  return (
+    <form action={logoutAction}>
+      <button
+        type="submit"
+        className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-4 py-2 text-xs uppercase tracking-[0.16em] text-(--color-ink-dim) transition hover:border-(--color-gold)/50 hover:text-(--color-ink)"
+      >
+        Sign out
+      </button>
+    </form>
   );
 }
 
@@ -327,35 +320,4 @@ function formatDate(iso: string): string {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(
     date.getUTCDate()
   )} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} (UTC)`;
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Admin shell                                                               */
-/* -------------------------------------------------------------------------- */
-
-/** Shared page chrome for all admin states (overview, access denied, setup
- *  required). Reuses the project's design tokens so the admin screen reads as
- *  the same product without inheriting the wedding-invitation ceremony. */
-function AdminShell({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <main className="mx-auto min-h-[100dvh] w-full max-w-5xl px-5 py-12">
-      <header className="mb-8 flex items-baseline justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.32em] text-(--color-gold-soft)">
-            Sarahi XV · admin
-          </p>
-          <h1 className="mt-2 font-serif text-3xl text-(--color-ink) sm:text-4xl">
-            {title}
-          </h1>
-        </div>
-      </header>
-      {children}
-    </main>
-  );
 }
