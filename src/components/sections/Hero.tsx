@@ -31,7 +31,14 @@ const reducedVariants: Variants = {
   show: { transition: { staggerChildren: 0, delayChildren: 0 } },
 };
 
-export default function Hero() {
+export default function Hero({
+  /** When true, hide the "Pronto podrás confirmar tu asistencia" teaser. Set on
+   *  the personalized route, where a real RSVP section replaces the teaser so
+   *  the two never contradict. The public landing route leaves it false. */
+  hideRsvpSoon = false,
+}: {
+  hideRsvpSoon?: boolean;
+}) {
   const reduceMotion = useReducedMotion();
   const container = reduceMotion ? reducedVariants : containerVariants;
   const item = reduceMotion ? reducedVariants : itemVariants;
@@ -108,9 +115,11 @@ export default function Hero() {
           <span>
             {EVENT.timeLabel} · {EVENT.cityLabel}
           </span>
-          <span className="mt-1 text-[0.62rem] tracking-[0.2em] text-[var(--color-ink)]">
-            {EVENT.rsvpSoonLabel}
-          </span>
+          {!hideRsvpSoon && (
+            <span className="mt-1 text-[0.62rem] tracking-[0.2em] text-[var(--color-ink)]">
+              {EVENT.rsvpSoonLabel}
+            </span>
+          )}
         </motion.div>
       </motion.div>
     </section>

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import DressCode from "@/components/sections/DressCode";
 import Gallery from "@/components/sections/Gallery";
 import Hero from "@/components/sections/Hero";
@@ -25,14 +27,32 @@ import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
  * a corner inside the frame, above the content, no autoplay, and the only place
  * an `<audio>` element is allowed to render.
  */
-export default function InvitationContent() {
+export default function InvitationContent({
+  rsvpSlot,
+}: {
+  /**
+   * Optional RSVP section rendered after the hero. Only the personalized route
+   * (`/i/[slug]`) passes it; the public landing route (`/`) passes nothing, so
+   * its behavior and output are unchanged. Passing it as a slot (rather than
+   * importing the section here) keeps the shared invitation ignorant of which
+   * entry point renders it, so the invitation never forks between routes.
+   *
+   * Its presence also hides the hero's "Pronto podrás confirmar tu asistencia"
+   * teaser: the personalized route has a real RSVP section, so the two lines
+   * must never contradict each other. The public route passes nothing, keeps
+   * the teaser, and is unchanged.
+   */
+  rsvpSlot?: ReactNode;
+}) {
+  const hideRsvpSoon = Boolean(rsvpSlot);
   return (
     <main className="relative isolate flex w-full flex-col">
       <div className="page-atmosphere" aria-hidden="true" />
 
       <OrnamentalFrame />
 
-      <Hero />
+      <Hero hideRsvpSoon={hideRsvpSoon} />
+      {rsvpSlot}
       <Locations />
       <Itinerary />
       <DressCode />
