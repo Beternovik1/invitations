@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { GuestGroup } from "@/lib/guest-groups";
+import type { Rsvp } from "@/lib/rsvps";
 
 /**
  * Server-only Supabase data access for guest groups.
@@ -16,11 +17,12 @@ import type { GuestGroup } from "@/lib/guest-groups";
  *   NEXT_PUBLIC_ prefix), so Next.js never inlines it into client bundles.
  *
  * No `@supabase/supabase-js` dependency is needed: the boundary only reads
- * guest groups by slug and lists active slugs, which the REST API handles with
- * plain `fetch`.
+ * guest groups by slug, lists active slugs, and reads/writes a group's RSVP,
+ * which the REST API handles with plain `fetch`.
  */
 
 const REST_PATH = "/rest/v1/guest_groups";
+const RSVP_REST_PATH = "/rest/v1/rsvps";
 const COLUMNS = "slug,display_name,assigned_seats,is_active,seats_note,notes";
 
 interface SupabaseConfig {
@@ -137,4 +139,119 @@ export async function fetchAllActiveGuestGroupSlugsFromSupabase(): Promise<
 
   const rows: { slug: string }[] = await res.json();
   return rows.map((row) => row.slug);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  RSVPs                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/** Columns returned for an RSVP row. Snake-case mirrors the DB schema. */
+const RSVP_COLUMNS =
+  "guest_group_slug,attending_count,message,created_at,updated_at";
+
+/** Row shape returned by the `rsvps` REST endpoint. */
+interface RsvpRow {
+  guest_group_slug: string;
+  attending_count: number;
+  message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function mapRsvpRow(row: RsvpRow): Rsvp {
+  return {
+    guestGroupSlug: row.guest_group_slug,
+    attendingCount: row.attending_count,
+    message: row.message,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * Fetch a guest group's existing RSVP by slug.
+ *
+ * Returns `null` when no RSVP exists for the group. `cache: "no-store"` keeps
+ * the read fresh so an upsert from the Server Action is immediately visible on
+ * the next request.
+ */
+export async function fetchRsvpBySlugFromSupabase(
+  slug: string
+): Promise<Rsvp | null> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${RSVP_REST_PATH}` +
+    `?guest_group_slug=eq.${encodeURIComponent(slug)}` +
+    `&select=${RSVP_COLUMNS}` +
+    `&limit=1`;
+
+  const res = await fetch(url, {
+    headers: authHeaders(serviceRoleKey),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase request for RSVP "${slug}" failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: RsvpRow[] = await res.json();
+  const row = rows[0];
+  if (!row) return null;
+  return mapRsvpRow(row);
+}
+
+/**
+ * Upsert (insert-or-update) a guest group's RSVP.
+ *
+ * `guest_group_slug` is the table's primary key, so `Prefer:
+ * resolution=merge-duplicates` makes PostgREST merge on conflict — exactly the
+ * "one RSVP per group, repeat submissions update" semantics the boundary needs.
+ * `return=representation` plus the `select` query param returns the resulting
+ * row so the caller gets back `created_at`/`updated_at` without a second fetch.
+ *
+ * The boundary has already validated `attendingCount` and `message`, so this
+ * function trusts its arguments and only reports transport-level failures.
+ */
+export async function upsertRsvpInSupabase(
+  slug: string,
+  attendingCount: number,
+  message: string | null
+): Promise<Rsvp> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url = `${baseUrl}${RSVP_REST_PATH}?select=${RSVP_COLUMNS}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...authHeaders(serviceRoleKey),
+      Prefer: "return=representation,resolution=merge-duplicates",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      guest_group_slug: slug,
+      attending_count: attendingCount,
+      message,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase upsert for RSVP "${slug}" failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: RsvpRow[] = await res.json();
+  const row = rows[0];
+  if (!row) {
+    // PostgREST returns the row when `return=representation` is set; an empty
+    // body here means the upsert silently matched nothing, which is unexpected.
+    throw new Error(
+      `Supabase upsert for RSVP "${slug}" returned no representation.`
+    );
+  }
+  return mapRsvpRow(row);
 }
