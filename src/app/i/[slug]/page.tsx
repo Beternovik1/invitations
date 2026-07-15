@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 
 import EnvelopeGate from "@/components/ui/EnvelopeGate";
 import InvitationContent from "@/components/InvitationContent";
+import RsvpSection from "@/components/sections/Rsvp";
 import { ASSETS, EVENT, SITE } from "@/lib/constants";
-import { getGuestGroupBySlug } from "@/lib/guest-groups";
+import { getGuestGroupBySlug, isSupabaseConfigured } from "@/lib/guest-groups";
+import { getRsvpBySlug } from "@/lib/rsvps";
 
 /**
  * Personalized invitation route.
@@ -88,9 +90,25 @@ export default async function InvitationPage({ params }: Props) {
   // groups, so both resolve to a 404 here.
   if (!group) notFound();
 
+  // Prefetch the group's existing RSVP so the form can prefill / show the
+  // current response. Memoized per request via React `cache`, so this and any
+  // other read in the same request share a single Supabase round-trip. When
+  // Supabase is not configured, the boundary returns null (mock mode refuses
+  // to pretend a confirmation exists).
+  const initialRsvp = await getRsvpBySlug(slug);
+  const rsvpEnabled = isSupabaseConfigured();
+
   return (
     <EnvelopeGate group={group}>
-      <InvitationContent />
+      <InvitationContent
+        rsvpSlot={
+          <RsvpSection
+            group={group}
+            initialRsvp={initialRsvp}
+            rsvpEnabled={rsvpEnabled}
+          />
+        }
+      />
     </EnvelopeGate>
   );
 }
