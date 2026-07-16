@@ -56,7 +56,7 @@ function AdminOverview({ groups }: { groups: AdminGuestGroup[] }) {
     <section>
       <AdminPageHeader title="RSVP overview" eyebrow="admin" />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
         <SummaryCard
           label="Assigned seats"
           value={summary.totalAssignedSeats}
@@ -85,7 +85,10 @@ function AdminOverview({ groups }: { groups: AdminGuestGroup[] }) {
       </div>
 
       <div className="mt-10">
-        <GroupTable groups={groups} />
+        <h2 className="mb-3 font-serif text-xl text-(--color-ink) md:hidden">
+          All groups
+        </h2>
+        <GroupList groups={groups} />
       </div>
     </section>
   );
@@ -141,11 +144,13 @@ function SummaryCard({
   hint?: string;
 }) {
   return (
-    <div className="leaf-panel rounded-2xl p-5">
+    <div className="leaf-panel rounded-2xl p-4 sm:p-5">
       <p className="text-xs uppercase tracking-[0.18em] text-(--color-gold-soft)">
         {label}
       </p>
-      <p className="mt-2 font-serif text-3xl text-(--color-ink)">{value}</p>
+      <p className="mt-2 font-serif text-2xl text-(--color-ink) sm:text-3xl">
+        {value}
+      </p>
       {hint ? (
         <p className="mt-1 text-xs text-(--color-ink-dim)">{hint}</p>
       ) : null}
@@ -154,7 +159,7 @@ function SummaryCard({
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Per-group table                                                           */
+/*  Per-group list (desktop table + mobile cards)                            */
 /* -------------------------------------------------------------------------- */
 
 const STATUS_LABELS: Record<RsvpStatus, string> = {
@@ -172,7 +177,7 @@ const STATUS_TONE: Record<RsvpStatus, string> = {
     "bg-(--color-glass) text-(--color-ink-dim) border-(--color-glass-border)",
 };
 
-function GroupTable({ groups }: { groups: AdminGuestGroup[] }) {
+function GroupList({ groups }: { groups: AdminGuestGroup[] }) {
   if (groups.length === 0) {
     return (
       <p className="rounded-2xl border border-(--color-glass-border) bg-(--color-glass) px-5 py-8 text-(--color-ink-dim)">
@@ -182,26 +187,101 @@ function GroupTable({ groups }: { groups: AdminGuestGroup[] }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-(--color-glass-border) bg-(--color-glass)">
-      <table className="w-full border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b border-(--color-glass-border) text-xs uppercase tracking-[0.16em] text-(--color-gold-soft)">
-            <th scope="col" className="p-4 font-medium">Group</th>
-            <th scope="col" className="p-4 font-medium">Slug</th>
-            <th scope="col" className="p-4 font-medium">Seats</th>
-            <th scope="col" className="p-4 font-medium">Status</th>
-            <th scope="col" className="p-4 font-medium">Attending</th>
-            <th scope="col" className="p-4 font-medium">Message</th>
-            <th scope="col" className="p-4 font-medium">Updated</th>
-          </tr>
-        </thead>
-        <tbody>
-          {groups.map((group) => (
-            <GroupRow key={group.slug} group={group} />
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {/* Desktop: the original dense table, untouched. Hidden below `md`
+          where the horizontal density would force a sideways scroll; the
+          card list below takes over so the host scrolls vertically. */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-(--color-glass-border) bg-(--color-glass) md:block">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b border-(--color-glass-border) text-xs uppercase tracking-[0.16em] text-(--color-gold-soft)">
+              <th scope="col" className="p-4 font-medium">Group</th>
+              <th scope="col" className="p-4 font-medium">Slug</th>
+              <th scope="col" className="p-4 font-medium">Seats</th>
+              <th scope="col" className="p-4 font-medium">Status</th>
+              <th scope="col" className="p-4 font-medium">Attending</th>
+              <th scope="col" className="p-4 font-medium">Message</th>
+              <th scope="col" className="p-4 font-medium">Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((group) => (
+              <GroupRow key={group.slug} group={group} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile / small screens: a scan-friendly card stack. Same data,
+          same status math (`rsvpStatusFor`), same labels/tones — rendered as
+          panels so every field fits the viewport and the host scrolls
+          straight down on her phone. */}
+      <ul className="flex flex-col gap-3 md:hidden">
+        {groups.map((group) => (
+          <li key={group.slug}>
+            <GroupCard group={group} />
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function GroupCard({ group }: { group: AdminGuestGroup }) {
+  const status = rsvpStatusFor(group);
+  const seatsLabel =
+    group.assignedSeats == null
+      ? group.seatsNote ?? "Pending"
+      : String(group.assignedSeats);
+  const updatedAt = group.rsvp ? formatDate(group.rsvp.updatedAt) : null;
+  const attending = group.rsvp ? group.rsvp.attendingCount : null;
+
+  return (
+    <article className="leaf-panel rounded-2xl p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="truncate font-serif text-lg text-(--color-ink)">
+            {group.displayName}
+          </h3>
+          <p className="mt-0.5 truncate font-mono text-[0.7rem] text-(--color-ink-dim)">
+            {group.slug}
+          </p>
+        </div>
+        <span
+          className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-xs ${STATUS_TONE[status]}`}
+        >
+          {STATUS_LABELS[status]}
+        </span>
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+        <div>
+          <dt className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+            Seats
+          </dt>
+          <dd className="mt-1 text-(--color-ink)">{seatsLabel}</dd>
+        </div>
+        <div>
+          <dt className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+            Attending
+          </dt>
+          <dd className="mt-1 text-(--color-ink)">{attending ?? "—"}</dd>
+        </div>
+      </dl>
+
+      {group.rsvp && group.rsvp.message ? (
+        <p className="mt-3 line-clamp-3 italic text-(--color-ink-dim)">
+          {group.rsvp.message}
+        </p>
+      ) : null}
+
+      <p className="mt-3 border-t border-(--color-glass-border) pt-3 text-xs text-(--color-ink-dim)">
+        <span className="text-[0.65rem] uppercase tracking-[0.16em]">
+          Updated
+        </span>{" "}
+        {updatedAt ?? "—"}
+      </p>
+    </article>
   );
 }
 
