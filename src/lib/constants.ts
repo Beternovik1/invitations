@@ -93,19 +93,19 @@ export const LOCATIONS = [
     id: "ceremony",
     kind: "ceremony",
     label: "Ceremonia",
-    time: "18:00 hrs",
-    venue: "Parroquia San José",
-    address: "Av. Reforma 123, Ciudad de México",
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Ciudad+de+Mexico",
+    time: "13:00 hrs",
+    venue: "Templo de la Sagrada Familia",
+    address: "Blvd. San Roque, Colon, 36597 Irapuato, Gto.",
+    mapsUrl: "https://maps.app.goo.gl/qzTJMAuFoK7Pmv1aA",
   },
   {
     id: "reception",
     kind: "reception",
     label: "Recepción",
-    time: "19:00 hrs",
-    venue: "Salón Cristal",
-    address: "Calz. de las Palmas 456, Ciudad de México",
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Ciudad+de+Mexico",
+    time: "16:00 hrs",
+    venue: "Jardín Alvori - Salón De Eventos",
+    address: "Arq. Enrique del moral Domínguez, 36826 Irapuato, Gto.",
+    mapsUrl: "https://maps.app.goo.gl/vD2fhiqZdFtPDKvf7",
   },
 ] as const;
 
@@ -115,11 +115,11 @@ export const LOCATIONS = [
  * why the itinerary renders as a timeline rather than an unordered grid.
  */
 export const ITINERARY = [
-  { time: "18:00", title: "Ceremonia", description: "Ceremonia religiosa" },
-  { time: "19:00", title: "Recepción", description: "Recepción de invitados" },
-  { time: "20:30", title: "Cena", description: "Cena de gala" },
-  { time: "21:30", title: "Vals", description: "El vals de Sarahí" },
-  { time: "22:00", title: "Baile", description: "Baile y fiesta" },
+  { time: "13:00", title: "Ceremonia", description: "Ceremonia religiosa" },
+  { time: "16:00", title: "Recepción", description: "Recepción de invitados" },
+  { time: "16:30", title: "Comida", description: "Comida" },
+  { time: "19:30", title: "Vals", description: "El vals de Sarahí" },
+  { time: "20:00", title: "Baile", description: "Baile y fiesta" },
 ] as const;
 
 /**
@@ -131,8 +131,8 @@ export const DRESS_CODE = {
   title: "Esmeralda y dorado",
   note: "Te invitamos a acompañarnos en tonos esmeralda y dorado para brillar juntos esta noche.",
   palette: [
-    { name: "Esmeralda", hex: "#0f5132" },
-    { name: "Dorado", hex: "#c79a3c" },
+    { name: "Esmeralda", hex: "#19aa66" },
+    { name: "Dorado", hex: "#ffae00" },
   ],
 } as const;
 
