@@ -73,12 +73,12 @@ export const SITE = {
  * `audioPath` to the public asset path to activate.
  */
 export const MUSIC = {
-  enabled: false,
-  title: "Canción favorita de Sarahí",
-  artist: "Por confirmar",
-  note: "La canción especial de Sarahí estará disponible aquí.",
-  audioPath: "",
-  loop: false,
+  enabled: true,
+  title: "Ma Belle Evangeline",
+  artist: "Princess and the Frog",
+  note: "La canción especial de Sarahí. Toca «Abrir invitación» y la música comienza.",
+  audioPath: "/music/ma-belle-evangeline.mp4",
+  loop: true,
 } as const;
 
 /**

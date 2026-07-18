@@ -1,10 +1,14 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 
 import BeadDivider from "@/components/ui/BeadDivider";
+import FloatingMusicButton, {
+  type FloatingMusicButtonHandle,
+} from "@/components/ui/FloatingMusicButton";
+import { MUSIC } from "@/lib/constants";
 import type { GuestGroup } from "@/lib/guest-groups";
 
 /* Shared easing matches the hero and section reveals so the whole invitation
@@ -46,8 +50,25 @@ export default function EnvelopeGate({ group, children }: EnvelopeGateProps) {
   const [opening, setOpening] = useState(false);
   const [opened, setOpened] = useState(false);
 
+  // Imperative handle to the audio control. Browsers only allow
+  // `HTMLAudioElement.play()` from within a user activation — including the
+  // "Abrir invitación" tap. The floating control mounts (hidden) before the
+  // envelope is opened so the `<audio>` element exists when that tap fires;
+  // we then call `play()` synchronously inside the click handler to ride the
+  // same user gesture. The promise is intentionally not awaited so the
+  // flap-open choreography starts immediately regardless of how the browser
+  // resolves playback (or rejects it on `NotAllowedError`).
+  const musicRef = useRef<FloatingMusicButtonHandle | null>(null);
+
   const handleOpen = useCallback(() => {
     if (opened || opening) return;
+
+    // Kick off music inside the same user gesture that opens the envelope.
+    // The handle absorbs `play()` rejections itself, so a browser that
+    // blocks playback never throws here — the invitation still opens and
+    // the (now-visible) button lets the guest retry manually.
+    void musicRef.current?.play();
+
     // Reduced-motion visitors skip the flap/seal choreography.
     if (reduceMotion) {
       setOpened(true);
@@ -71,6 +92,17 @@ export default function EnvelopeGate({ group, children }: EnvelopeGateProps) {
   return (
     <>
       {opened ? children : null}
+
+      {/* The personalized route renders its floating music control here so
+          the audio element is mounted before the envelope is opened — the
+          "Abrir invitación" tap can call `play()` on it as a user gesture.
+          `hidden` keeps it visually absent until the envelope is opened, at
+          which point the button becomes the guest's pause/resume control.
+          The shared `InvitationContent` is rendered with `showMusicButton`
+          disabled on this route so there is never a second control. */}
+      {MUSIC.enabled ? (
+        <FloatingMusicButton ref={musicRef} hidden={!opened} />
+      ) : null}
 
       <AnimatePresence>
         {!opened && (

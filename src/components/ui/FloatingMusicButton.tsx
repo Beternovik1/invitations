@@ -1,8 +1,48 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 
 import { MUSIC } from "@/lib/constants";
+
+/**
+ * Imperative surface exposed by `<FloatingMusicButton>` through a ref.
+ *
+ * `play()` exists so a parent component (e.g. `<EnvelopeGate>`) can kick off
+ * playback from inside its own user-gesture handler — the "Abrir invitación"
+ * tap — without having to reach into the audio element directly. This matters
+ * because browsers only honor programmatic `play()` when it runs inside a user
+ * activation; exposing `play()` lets the envelope-open tap double as the
+ * gesture that unlocks audio, while the visible button stays mounted and
+ * ready to pause/resume afterwards.
+ */
+export interface FloatingMusicButtonHandle {
+  /** Best-effort start of playback. Rejects softly on `NotAllowedError` and
+   *  `AbortError`; never throws to the caller. */
+  play: () => Promise<void>;
+  /** Toggle play/pause — mirrors the visible button's behavior so a parent
+   *  could expose keyboard shortcuts if needed. */
+  toggle: () => Promise<void>;
+}
+
+interface FloatingMusicButtonProps {
+  /**
+   * When true, only the `<audio>` element is mounted (no visible UI). Used on
+   * the personalized route so the audio element exists before the envelope is
+   * opened — the open tap can then call `play()` on it as a user gesture —
+   * while no duplicate floating button is shown until the gate is opened.
+   *
+   * The element is intentionally still rendered (not returned as `null`) so
+   * the ref stays attached and the audio instance is warm.
+   */
+  hidden?: boolean;
+}
 
 /**
  * Persistent, single-song, user-controlled music control pinned to a corner of
@@ -23,7 +63,10 @@ import { MUSIC } from "@/lib/constants";
  * of tiny-phone content. Reduced-motion visitors get the same control with no
  * motion.
  */
-export default function FloatingMusicButton() {
+const FloatingMusicButton = forwardRef<
+  FloatingMusicButtonHandle,
+  FloatingMusicButtonProps
+>(function FloatingMusicButton({ hidden = false }, ref) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -58,7 +101,25 @@ export default function FloatingMusicButton() {
     };
   }, []);
 
-  const togglePlay = useCallback(async () => {
+  // Start playback (best-effort). The promise is awaited so NotAllowedError
+  // surfaces cleanly; rejections are absorbed so a browser that blocks audio
+  // never throws to the console or to the caller using `play()` on the ref.
+  const play = useCallback(async () => {
+    const el = audioRef.current;
+    if (!el) return;
+
+    setBlocked(false);
+    try {
+      await el.play();
+    } catch (err) {
+      const name = err instanceof DOMException ? err.name : "";
+      if (name === "AbortError") return;
+      setIsPlaying(false);
+      setBlocked(true);
+    }
+  }, []);
+
+  const toggle = useCallback(async () => {
     const el = audioRef.current;
     if (!el) return;
 
@@ -66,26 +127,20 @@ export default function FloatingMusicButton() {
       el.pause();
       return;
     }
+    await play();
+  }, [isPlaying, play]);
 
-    setBlocked(false);
-    try {
-      // Play() returns a Promise; awaiting it surfaces NotAllowedError when
-      // the browser blocks playback, which we treat as a soft "blocked"
-      // state rather than letting the rejection bubble up.
-      await el.play();
-    } catch (err) {
-      const name = err instanceof DOMException ? err.name : "";
-      // AbortError fires when play() is interrupted by a fast pause() call —
-      // not a real error, just leave current state alone.
-      if (name === "AbortError") return;
-      setIsPlaying(false);
-      setBlocked(true);
-    }
-  }, [isPlaying]);
+  useImperativeHandle(
+    ref,
+    () => ({ play, toggle }),
+    [play, toggle],
+  );
 
   const titleLine = `${MUSIC.title} · ${MUSIC.artist}`;
 
-  // ----- Disabled state: no audio wired yet -------------------------------
+  // The audio element must render before any gesture can call `play()`, so it
+  // is mounted even when the UI is hidden (used on the personalized route to
+  // warm the audio instance for the envelope-open tap).
   if (!enabled) {
     return (
       <div
@@ -118,7 +173,10 @@ export default function FloatingMusicButton() {
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1.5 sm:bottom-8 sm:right-8 lg:bottom-10 lg:right-10"
+      className={`fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1.5 transition-opacity sm:bottom-8 sm:right-8 lg:bottom-10 lg:right-10 ${
+        hidden ? "pointer-events-none opacity-0" : "opacity-100"
+      }`}
+      aria-hidden={hidden ? "true" : undefined}
       style={{ paddingBottom: "env(safe-area-inset-bottom)", paddingRight: "env(safe-area-inset-right)" }}
     >
       {isPlaying && (
@@ -132,7 +190,7 @@ export default function FloatingMusicButton() {
 
       <button
         type="button"
-        onClick={togglePlay}
+        onClick={toggle}
         aria-label={buttonLabel}
         aria-pressed={isPlaying}
         className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-gold)] bg-[var(--color-cream-white)] text-[var(--color-gold-soft)] shadow-[0_8px_22px_rgba(33,58,50,0.28)] transition-colors hover:bg-[var(--color-gold)] hover:text-[var(--color-cream-white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-cream-white)] sm:h-14 sm:w-14"
@@ -159,7 +217,11 @@ export default function FloatingMusicButton() {
       />
     </div>
   );
-}
+});
+
+FloatingMusicButton.displayName = "FloatingMusicButton";
+
+export default FloatingMusicButton;
 
 /* -------------------------------------------------------------------------- */
 /*  Decorative glyphs                                                         */

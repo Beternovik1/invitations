@@ -29,6 +29,7 @@ import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
  */
 export default function InvitationContent({
   rsvpSlot,
+  showMusicButton = true,
 }: {
   /**
    * Optional RSVP section rendered after the hero. Only the personalized route
@@ -43,6 +44,16 @@ export default function InvitationContent({
    * the teaser, and is unchanged.
    */
   rsvpSlot?: ReactNode;
+  /**
+   * Whether `InvitationContent` renders its own `FloatingMusicButton`. The
+   * public route (`/`) leaves this true (default) for the original manual
+   * play button behavior. The personalized route (`/i/[slug]`) sets it to
+   * `false` so the control owned by `<EnvelopeGate>` is the only one — that
+   * control is mounted before the envelope opens so the "Abrir invitación"
+   * tap can start playback as a user gesture, then becomes the
+   * pause/resume button after opening.
+   */
+  showMusicButton?: boolean;
 }) {
   const hideRsvpSoon = Boolean(rsvpSlot);
   return (
@@ -59,7 +70,7 @@ export default function InvitationContent({
       <Gallery />
       <MusicSection />
 
-      <FloatingMusicButton />
+      {showMusicButton ? <FloatingMusicButton /> : null}
     </main>
   );
 }
