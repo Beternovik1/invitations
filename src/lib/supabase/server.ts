@@ -235,6 +235,98 @@ function mapRowWithRsvp(row: GuestGroupWithRsvpRow): AdminGuestGroup {
 }
 
 /**
+ * ALL guest groups (including inactive), ascending by slug.
+ *
+ * Unlike `fetchAllActiveGuestGroupSlugsFromSupabase` and the admin overview,
+ * this does NOT filter `is_active = false`: the guest-group editor needs to show
+ * soft-deleted/disabled groups so the host can re-enable a link or edit a label
+ * without a DB round-trip. `mapRow` keeps `isActive` on the returned object, so
+ * the editor can flag inactive rows in the UI.
+ *
+ * `cache: "no-store"` keeps the list fresh so the editor reflects the latest
+ * activate/deactivate immediately on reload.
+ */
+export async function fetchAllGuestGroupsFromSupabase(): Promise<GuestGroup[]> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${REST_PATH}` + `?select=${COLUMNS}` + `&order=slug.asc`;
+
+  const res = await fetch(url, {
+    headers: authHeaders(serviceRoleKey),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase admin guest groups request failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: GuestGroupRow[] = await res.json();
+  return rows.map(mapRow);
+}
+
+/** Input for updating a guest group by slug. Snake-cased fields mirror the DB
+ *  schema; the boundary (`admin-guest-groups.ts`) validates before calling. */
+export interface GuestGroupUpdateInput {
+  displayName: string;
+  assignedSeats: number | null;
+  seatsNote: string | null;
+  isActive: boolean;
+}
+
+/**
+ * Update a guest group by slug.
+ *
+ * Patches `display_name`, `assigned_seats`, `seats_note`, and `is_active`. The
+ * slug is the immutable identifier (the editor never lets the host rename it),
+ * so it selects the row rather than appearing in the body. `return
+ * =representation` plus the `select` param returns the updated row.
+ *
+ * Returns `null` when no row matched the slug (a group deleted out-of-band
+ * between the page load and the save). The boundary treats that as a
+ * `group_not_found` validation error rather than a transport throw.
+ */
+export async function updateGuestGroupInSupabase(
+  slug: string,
+  input: GuestGroupUpdateInput
+): Promise<GuestGroup | null> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${REST_PATH}` +
+    `?slug=eq.${encodeURIComponent(slug)}` +
+    `&select=${COLUMNS}`;
+
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      ...authHeaders(serviceRoleKey),
+      Prefer: "return=representation",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      display_name: input.displayName,
+      assigned_seats: input.assignedSeats,
+      seats_note: input.seatsNote,
+      is_active: input.isActive,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase update for guest group "${slug}" failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: GuestGroupRow[] = await res.json();
+  const row = rows[0];
+  if (!row) return null;
+  return mapRow(row);
+}
+
+/**
  * All active guest groups with their RSVP joined in, ascending by slug.
  *
  * Uses PostgREST's embedded resource selection (`select=...,rsvps(...)`) so the

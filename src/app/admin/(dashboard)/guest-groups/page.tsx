@@ -1,19 +1,26 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import AdminPageHeader from "@/app/admin/_components/AdminPageHeader";
+import GuestGroupEditor from "@/app/admin/(dashboard)/guest-groups/GuestGroupEditor";
+import {
+  isAdminAccessConfigured,
+  isAdminAuthenticated,
+} from "@/lib/admin-access";
+import { getAllGuestGroupsForAdmin } from "@/lib/admin-guest-groups";
 
 /**
- * Guest groups admin placeholder.
+ * Guest groups admin editor.
  *
- * This is the honest navigation target for the "Guest groups" sidebar link —
- * a reachable route protected by the dashboard layout's auth gate, but with
- * NO editing yet. The host can see that the section exists and where it will
- * live, and the sidebar link is a real navigation rather than a disabled
- * placeholder that hides the destination.
+ * Lets the host maintain existing guest groups without touching Supabase:
+ * display name, assigned seats, seats note, and active/inactive. Slugs remain
+ * immutable in this slice, and there is no create/delete flow — inactive is the
+ * safe soft-delete path.
  *
- * The guest-group editor (create / edit seat counts / soft-delete a group) is
- * the next slice. Until then, the live groups stay read-only from the RSVP
- * overview, which already renders the same per-group table.
+ * Like the RSVP overview, this page repeats admin auth immediately before the
+ * private fetch instead of relying only on the dashboard layout. The page is a
+ * Server Component; the client editor receives only rows and posts mutations
+ * through a Server Action.
  *
  * `title` is merged with the dashboard layout's `robots: noindex`, so this
  * route stays out of search engines without restating it here.
@@ -23,36 +30,25 @@ export const metadata: Metadata = {
   title: "Guest groups",
 };
 
-export default function AdminGuestGroupsPage() {
+export default async function AdminGuestGroupsPage() {
+  if (!isAdminAccessConfigured() || !(await isAdminAuthenticated())) {
+    redirect("/admin/login");
+  }
+
+  const groups = await getAllGuestGroupsForAdmin();
+
   return (
     <section>
       <AdminPageHeader title="Guest groups" eyebrow="admin" />
 
-      <div className="leaf-panel rounded-2xl p-8">
-        <p className="text-xs uppercase tracking-[0.32em] text-(--color-gold-soft)">
-          Coming soon
-        </p>
-        <h2 className="mt-2 font-serif text-2xl text-(--color-ink)">
-          Guest-group editor
-        </h2>
-        <p className="mt-3 max-w-prose text-(--color-ink-dim)">
-          Editing guest groups — names, assigned seats, and soft-deleting a
-          link — will land here in the next slice. For now, the live groups
-          remain read-only from the RSVP overview, which already shows the
-          same per-group table.
-        </p>
+      <p className="mb-6 max-w-3xl text-sm text-(--color-ink-dim)">
+        Search for a group, pick it, and edit its name, seat count, seat note,
+        or invitation link. Leave assigned seats blank when the count is still
+        pending. Inactive groups stop rendering personalized invitation links,
+        but the row stays available here so it can be re-enabled later.
+      </p>
 
-        <p className="mt-6 text-sm text-(--color-ink-dim)">
-          Open the{" "}
-          <a
-            href="/admin/rsvps"
-            className="font-medium text-(--color-dusty-teal) underline-offset-4 hover:underline"
-          >
-            RSVP overview
-          </a>{" "}
-          to see current groups and responses.
-        </p>
-      </div>
+      <GuestGroupEditor groups={groups} />
     </section>
   );
 }
