@@ -1,0 +1,209 @@
+/**
+ * Admin guest-group data boundary (read list + update fields).
+ *
+ * This module is the single source of truth the `/admin/guest-groups` route and
+ * its Server Action use to list every group (active AND inactive) and to patch a
+ * group's mutable fields. It mirrors the other boundaries
+ * (`guest-groups.ts`, `rsvps.ts`, `admin-overview.ts`):
+ *
+ * - When Supabase is configured (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`),
+ *   the list and writes go through the REST API with the service-role key (see
+ *   `src/lib/supabase/server.ts`). The key is read from `SUPABASE_SERVICE_ROLE_KEY`
+ *   (no `NEXT_PUBLIC_` prefix), so it is `undefined` on the client and never
+ *   inlined into a client bundle.
+ * - When those variables are absent, the list falls back to the in-repo mock
+ *   data (`GUEST_GROUPS`) so a zero-config build/dev can still open the editor.
+ *   Writes NEVER pretend to succeed in mock mode: `updateGuestGroupForAdmin`
+ *   returns an `unavailable` error, exactly like the RSVP boundary. Local builds
+ *   stay honest — the editor shows the groups and the disabled state, but it
+ *   never lies that a save landed.
+ *
+ * This module deliberately does NOT import `server-only`: like `rsvps.ts` and
+ * `admin-overview.ts`, it stays importable for type-only client usage. The
+ * runtime functions only ever run on the server (from the page Server Component
+ * or the Server Action), and the Supabase module is pulled in with a dynamic
+ * `import()`, which — combined with the `import "server-only"` at the top of
+ * `supabase/server.ts` — keeps the service-key off the client.
+ *
+ * The runtime-safe constants/types live in `@/lib/admin-guest-groups-shared` so
+ * the client editor can read `MAX_SEATS_NOTE_LENGTH` / `MAX_DISPLAY_NAME_LENGTH`
+ * (runtime values) without importing this module and dragging the dynamic
+ * Supabase import into its bundle graph. They are re-exported here so server
+ * callers have a single import surface.
+ */
+
+import { cache } from "react";
+
+import {
+  GUEST_GROUPS,
+  isSupabaseConfigured,
+  type GuestGroup,
+} from "@/lib/guest-groups";
+import {
+  MAX_DISPLAY_NAME_LENGTH,
+  MAX_SEATS_NOTE_LENGTH,
+  type AdminGuestGroupActionResult,
+  type AdminGuestGroupError,
+  type AdminGuestGroupErrorCode,
+  type AdminGuestGroupInput,
+  type GuestGroupFormState,
+} from "@/lib/admin-guest-groups-shared";
+
+// Re-export the shared symbols so server callers can import everything from
+// `@/lib/admin-guest-groups` (the boundary's public surface) without also
+// needing to know about the shared module.
+export {
+  MAX_DISPLAY_NAME_LENGTH,
+  MAX_SEATS_NOTE_LENGTH,
+  type AdminGuestGroupActionResult,
+  type AdminGuestGroupError,
+  type AdminGuestGroupErrorCode,
+  type AdminGuestGroupInput,
+  type GuestGroupFormState,
+};
+
+/** English, admin-facing copy for expected validation failures, keyed by code.
+ *  Keeps the boundary the single owner of admin error wording. */
+const ERROR_MESSAGES: Record<AdminGuestGroupErrorCode, string> = {
+  group_not_found:
+    "This group no longer exists. It may have been removed since you opened the editor. Reload the page to refresh the list.",
+  display_name_empty: "Display name cannot be empty.",
+  assigned_seats_invalid:
+    "Assigned seats must be a whole number of 0 or more, or left blank for pending.",
+  seats_note_too_long: `Seats note must be ${MAX_SEATS_NOTE_LENGTH} characters or fewer.`,
+  unavailable:
+    "Editing is not available in this environment. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to enable edits.",
+  unexpected:
+    "Something went wrong while saving this group. Try again in a moment.",
+};
+
+function error(
+  code: AdminGuestGroupErrorCode,
+  fields?: AdminGuestGroupError["fields"]
+): AdminGuestGroupError {
+  return { code, message: ERROR_MESSAGES[code], fields };
+}
+
+/**
+ * All guest groups for the admin editor, ascending by slug.
+ *
+ * Unlike the read-only overview (`getActiveGuestGroupsWithRsvp`), this includes
+ * INACTIVE groups (`is_active = false`): the editor's whole point is to let the
+ * host edit a label or re-enable a disabled link without a DB round-trip. The
+ * `isActive` flag is preserved on each returned object so the UI can flag
+ * inactive rows.
+ *
+ * In mock mode (Supabase not configured), the in-repo `GUEST_GROUPS` is returned
+ * with `isActive: true` — mock data models every group as active, so the editor
+ * shows the full list. Memoized per request with React `cache` so the page and
+ * any helper in the same render share a single fetch.
+ */
+export const getAllGuestGroupsForAdmin = cache(
+  async (): Promise<GuestGroup[]> => {
+    if (!isSupabaseConfigured()) {
+      // Mock entries omit `isActive`; model them as active so the editor's
+      // "inactive groups stop invitation links" note stays truthful.
+      return GUEST_GROUPS.map((group) => ({ ...group, isActive: true }));
+    }
+    const { fetchAllGuestGroupsFromSupabase } = await import(
+      "@/lib/supabase/server"
+    );
+    return fetchAllGuestGroupsFromSupabase();
+  }
+);
+
+/**
+ * Validate and persist edits to a guest group by slug.
+ *
+ * Never throws for expected validation failures — it returns a structured
+ * `{ ok: false, error }` instead, so the Server Action can surface them to the
+ * card form without a try/catch that swallows admin-facing problems. Only
+ * truly unexpected failures (e.g. a Supabase outage) throw, and the Server
+ * Action converts those into an `unexpected` result.
+ *
+ * Validation order (fail fast):
+ *   1. `displayName` is trimmed; empty/whitespace-only is rejected. Capped at
+ *      `MAX_DISPLAY_NAME_LENGTH` after trimming.
+ *   2. `assignedSeats` is `null` (pending) or a non-negative integer. Decimals,
+ *      negatives, and other shapes are rejected.
+ *   3. `seatsNote` is trimmed; `null`/empty becomes `null`. Capped at
+ *      `MAX_SEATS_NOTE_LENGTH` after trimming.
+ *   4. `isActive` must be a boolean (the action parses the checkbox).
+ *   5. Supabase must be configured for writes — mock mode never pretends a save
+ *      landed (`unavailable`).
+ *
+ * The slug never appears in the body: it is the immutable identifier that
+ * selects the row. `updateGuestGroupInSupabase` returns `null` when no row
+ * matched (a group deleted out-of-band between page load and save); that is
+ * mapped to a `group_not_found` validation error rather than a throw.
+ */
+export async function updateGuestGroupForAdmin(
+  slug: string,
+  input: AdminGuestGroupInput
+): Promise<AdminGuestGroupActionResult> {
+  const displayName = input.displayName.trim();
+  if (displayName.length === 0) {
+    return {
+      ok: false,
+      error: error("display_name_empty", {
+        displayName: "Enter a name for this group.",
+      }),
+    };
+  }
+  if (displayName.length > MAX_DISPLAY_NAME_LENGTH) {
+    return {
+      ok: false,
+      error: error("display_name_empty", {
+        displayName: `Keep the name under ${MAX_DISPLAY_NAME_LENGTH} characters.`,
+      }),
+    };
+  }
+
+  const assignedSeats = input.assignedSeats;
+  if (
+    assignedSeats !== null &&
+    (!Number.isInteger(assignedSeats) || assignedSeats < 0)
+  ) {
+    return {
+      ok: false,
+      error: error("assigned_seats_invalid", {
+        assignedSeats: "Use a whole number of 0 or more, or leave it blank.",
+      }),
+    };
+  }
+
+  const trimmedNote =
+    typeof input.seatsNote === "string" ? input.seatsNote.trim() : "";
+  if (trimmedNote.length > MAX_SEATS_NOTE_LENGTH) {
+    return { ok: false, error: error("seats_note_too_long") };
+  }
+  const seatsNote = trimmedNote.length > 0 ? trimmedNote : null;
+
+  if (typeof input.isActive !== "boolean") {
+    // Defensive: the action always parses the checkbox to a boolean, so this
+    // only fires if the boundary is called from somewhere that didn't.
+    return { ok: false, error: error("unexpected") };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { ok: false, error: error("unavailable") };
+  }
+
+  try {
+    const { updateGuestGroupInSupabase } = await import(
+      "@/lib/supabase/server"
+    );
+    const group = await updateGuestGroupInSupabase(slug, {
+      displayName,
+      assignedSeats,
+      seatsNote,
+      isActive: input.isActive,
+    });
+    if (!group) {
+      return { ok: false, error: error("group_not_found") };
+    }
+    return { ok: true, group };
+  } catch {
+    return { ok: false, error: error("unexpected") };
+  }
+}
