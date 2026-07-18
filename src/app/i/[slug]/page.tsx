@@ -101,6 +101,7 @@ export default async function InvitationPage({ params }: Props) {
   return (
     <EnvelopeGate group={group}>
       <InvitationContent
+        showMusicButton={false}
         rsvpSlot={
           <RsvpSection
             group={group}
