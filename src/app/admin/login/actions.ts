@@ -33,19 +33,19 @@ export async function loginAction(
   formData: FormData
 ): Promise<LoginState> {
   if (!isAdminAccessConfigured()) {
-    return { error: "Admin access is not configured on this deployment." };
+    return { error: "El acceso de administrador no está configurado en este despliegue." };
   }
 
   const raw = formData.get("key");
   const candidate = typeof raw === "string" ? raw : "";
 
   if (candidate.length === 0) {
-    return { error: "Enter the access key." };
+    return { error: "Ingresa la clave de acceso." };
   }
 
   const ok = await signInAdmin(candidate);
   if (!ok) {
-    return { error: "Incorrect access key." };
+    return { error: "Clave de acceso incorrecta." };
   }
 
   redirect("/admin/rsvps");

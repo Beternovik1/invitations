@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 export default function AdminPageHeader({
   title,
-  eyebrow = "admin",
+  eyebrow = "administrador",
   children,
 }: {
   title: string;

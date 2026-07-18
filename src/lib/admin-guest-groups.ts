@@ -62,19 +62,20 @@ export {
   type GuestGroupFormState,
 };
 
-/** English, admin-facing copy for expected validation failures, keyed by code.
- *  Keeps the boundary the single owner of admin error wording. */
+/** Copia en español para los errores de validación esperados, indexada por
+ *  código. Mantenerla aquí hace que la frontera sea la única dueña del texto
+ *  de los errores de administración. */
 const ERROR_MESSAGES: Record<AdminGuestGroupErrorCode, string> = {
   group_not_found:
-    "This group no longer exists. It may have been removed since you opened the editor. Reload the page to refresh the list.",
-  display_name_empty: "Display name cannot be empty.",
+    "Este grupo ya no existe. Puede que se haya eliminado desde que abriste el editor. Recarga la página para actualizar la lista.",
+  display_name_empty: "El nombre del grupo no puede estar vacío.",
   assigned_seats_invalid:
-    "Assigned seats must be a whole number of 0 or more, or left blank for pending.",
-  seats_note_too_long: `Seats note must be ${MAX_SEATS_NOTE_LENGTH} characters or fewer.`,
+    "Los lugares asignados deben ser un número entero de 0 o más, o dejarse vacío cuando están por confirmar.",
+  seats_note_too_long: `La nota de lugares debe tener ${MAX_SEATS_NOTE_LENGTH} caracteres o menos.`,
   unavailable:
-    "Editing is not available in this environment. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to enable edits.",
+    "La edición no está disponible en este entorno. Define SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY para activar las ediciones.",
   unexpected:
-    "Something went wrong while saving this group. Try again in a moment.",
+    "Ocurrió un problema al guardar este grupo. Inténtalo de nuevo en un momento.",
 };
 
 function error(
@@ -146,7 +147,7 @@ export async function updateGuestGroupForAdmin(
     return {
       ok: false,
       error: error("display_name_empty", {
-        displayName: "Enter a name for this group.",
+        displayName: "Ingresa un nombre para este grupo.",
       }),
     };
   }
@@ -154,7 +155,7 @@ export async function updateGuestGroupForAdmin(
     return {
       ok: false,
       error: error("display_name_empty", {
-        displayName: `Keep the name under ${MAX_DISPLAY_NAME_LENGTH} characters.`,
+        displayName: `Mantén el nombre en ${MAX_DISPLAY_NAME_LENGTH} caracteres o menos.`,
       }),
     };
   }
@@ -167,7 +168,7 @@ export async function updateGuestGroupForAdmin(
     return {
       ok: false,
       error: error("assigned_seats_invalid", {
-        assignedSeats: "Use a whole number of 0 or more, or leave it blank.",
+        assignedSeats: "Usa un número entero de 0 o más, o déjalo vacío.",
       }),
     };
   }

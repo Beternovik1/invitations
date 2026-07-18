@@ -27,7 +27,7 @@ import { getAllGuestGroupsForAdmin } from "@/lib/admin-guest-groups";
  */
 
 export const metadata: Metadata = {
-  title: "Guest groups",
+  title: "Modificar invitados",
 };
 
 export default async function AdminGuestGroupsPage() {
@@ -39,13 +39,14 @@ export default async function AdminGuestGroupsPage() {
 
   return (
     <section>
-      <AdminPageHeader title="Guest groups" eyebrow="admin" />
+      <AdminPageHeader title="Modificar invitados" eyebrow="administrador" />
 
       <p className="mb-6 max-w-3xl text-sm text-(--color-ink-dim)">
-        Search for a group, pick it, and edit its name, seat count, seat note,
-        or invitation link. Leave assigned seats blank when the count is still
-        pending. Inactive groups stop rendering personalized invitation links,
-        but the row stays available here so it can be re-enabled later.
+        Busca un grupo, selecciónalo y edita su nombre, número de lugares, nota
+        de lugares o enlace de invitación. Deja los lugares asignados vacíos
+        cuando el número todavía no se confirma. Los grupos inactivos dejan de
+        mostrar su enlace de invitación personalizado, pero el renglón sigue
+        disponible aquí para reactivarlo después.
       </p>
 
       <GuestGroupEditor groups={groups} />

@@ -51,7 +51,7 @@ export default function GuestGroupEditor({ groups }: { groups: GuestGroup[] }) {
   if (groups.length === 0) {
     return (
       <p className="rounded-2xl border border-(--color-glass-border) bg-(--color-glass) px-5 py-8 text-(--color-ink-dim)">
-        No guest groups found.
+        No se encontraron grupos de invitados.
       </p>
     );
   }
@@ -64,14 +64,15 @@ export default function GuestGroupEditor({ groups }: { groups: GuestGroup[] }) {
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
         <SummaryPill label="Total" value={groups.length} />
-        <SummaryPill label="Active" value={activeCount} />
-        <SummaryPill label="Pending seats" value={pendingCount} />
+        <SummaryPill label="Activos" value={activeCount} />
+        <SummaryPill label="Lugares por confirmar" value={pendingCount} />
       </div>
 
       {inactiveCount > 0 ? (
         <p className="rounded-2xl border border-(--color-gold)/30 bg-(--color-pale-yellow-green)/25 px-4 py-3 text-sm text-(--color-ink-dim)">
-          {inactiveCount} inactive group{inactiveCount === 1 ? "" : "s"} are
-          still listed so you can re-enable them later.
+          {inactiveCount === 1
+            ? `${inactiveCount} grupo inactivo sigue listado para que puedas reactivarlo después.`
+            : `${inactiveCount} grupos inactivos siguen listados para que puedas reactivarlos después.`}
         </p>
       ) : null}
 
@@ -79,7 +80,7 @@ export default function GuestGroupEditor({ groups }: { groups: GuestGroup[] }) {
 
       {filtered.length === 0 ? (
         <p className="rounded-2xl border border-(--color-glass-border) bg-(--color-glass) px-4 py-5 text-sm text-(--color-ink-dim)">
-          No groups match &ldquo;{query}&rdquo;.
+          No hay grupos que coincidan con &ldquo;{query}&rdquo;.
         </p>
       ) : (
         <ul className="grid gap-2 sm:grid-cols-2">
@@ -139,13 +140,13 @@ function SearchInput({
   const inputId = useId();
   return (
     <label htmlFor={inputId} className="block">
-      <span className="sr-only">Search guest groups</span>
+      <span className="sr-only">Buscar grupos de invitados</span>
       <input
         id={inputId}
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Search by name or slug"
+        placeholder="Buscar por nombre o identificador"
         autoComplete="off"
         className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-4 py-2.5 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60"
       />
@@ -182,7 +183,7 @@ function GroupPickerButton({
         </span>
         <span className="mt-0.5 block truncate font-mono text-[0.65rem] text-(--color-ink-dim)">
           {group.slug}
-          {isPending ? " · pending seats" : ` · ${group.assignedSeats} seats`}
+          {isPending ? " · lugares por confirmar" : ` · ${group.assignedSeats} lugares`}
         </span>
       </span>
       <span
@@ -192,7 +193,7 @@ function GroupPickerButton({
             : "border-(--color-glass-border) bg-(--color-glass) text-(--color-ink-dim)"
         }`}
       >
-        {isActive ? "Active" : "Inactive"}
+        {isActive ? "Activo" : "Inactivo"}
       </span>
     </button>
   );
@@ -211,6 +212,7 @@ function GuestGroupForm({
   const feedback = state.slug === group.slug ? state : null;
   const hasError = feedback?.status === "error";
   const fieldErrors = hasError ? feedback.error.fields : undefined;
+  const invitationPath = `/i/${group.slug}`;
 
   return (
     <form action={formAction} className="leaf-panel rounded-2xl p-5">
@@ -232,21 +234,24 @@ function GuestGroupForm({
               : "border-(--color-glass-border) bg-(--color-glass) text-(--color-ink-dim)"
           }`}
         >
-          {isActive ? "Active" : "Inactive"}
+          {isActive ? "Activo" : "Inactivo"}
         </span>
       </div>
 
       <div className="mt-5 grid gap-4">
-        <Field label="Slug" hint="Read-only">
-          <input
-            value={group.slug}
-            readOnly
-            aria-readonly="true"
-            className="w-full rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2 font-mono text-sm text-(--color-ink-dim) outline-none"
-          />
+        <Field label="Identificador" hint="Solo lectura">
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <input
+              value={group.slug}
+              readOnly
+              aria-readonly="true"
+              className="w-full rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2 font-mono text-sm text-(--color-ink-dim) outline-none"
+            />
+            <CopyInvitationButton path={invitationPath} />
+          </div>
         </Field>
 
-        <Field label="Display name" error={fieldErrors?.displayName}>
+        <Field label="Nombre del grupo" error={fieldErrors?.displayName}>
           <input
             name="displayName"
             defaultValue={group.displayName}
@@ -257,7 +262,7 @@ function GuestGroupForm({
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Assigned seats" error={fieldErrors?.assignedSeats}>
+          <Field label="Lugares asignados" error={fieldErrors?.assignedSeats}>
             <input
               name="assignedSeats"
               type="number"
@@ -265,7 +270,7 @@ function GuestGroupForm({
               step="1"
               inputMode="numeric"
               defaultValue={group.assignedSeats ?? ""}
-              placeholder="Pending"
+              placeholder="Por confirmar"
               className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-3 py-2 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60"
             />
           </Field>
@@ -273,9 +278,11 @@ function GuestGroupForm({
           <label className="flex items-center justify-between gap-3 rounded-xl border border-(--color-glass-border) bg-white/40 px-3 py-2 text-sm text-(--color-ink)">
             <span>
               <span className="block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
-                Invitation link
+                Enlace de invitación
               </span>
-              <span className="text-(--color-ink-dim)">Inactive groups 404</span>
+              <span className="text-(--color-ink-dim)">
+                Si lo desactivas, el enlace dejará de funcionar.
+              </span>
             </span>
             <input
               name="isActive"
@@ -286,7 +293,7 @@ function GuestGroupForm({
           </label>
         </div>
 
-        <Field label="Seats note" error={fieldErrors?.seatsNote}>
+        <Field label="Nota de lugares" error={fieldErrors?.seatsNote}>
           <textarea
             name="seatsNote"
             defaultValue={group.seatsNote ?? ""}
@@ -300,7 +307,7 @@ function GuestGroupForm({
 
       {feedback?.status === "success" ? (
         <p className="mt-4 rounded-xl border border-(--color-dusty-teal)/35 bg-(--color-sage)/35 px-3 py-2 text-sm text-(--color-ink)">
-          Saved.
+          Guardado.
         </p>
       ) : null}
 
@@ -314,6 +321,34 @@ function GuestGroupForm({
         <SaveButton />
       </div>
     </form>
+  );
+}
+
+function CopyInvitationButton({ path }: { path: string }) {
+  const [label, setLabel] = useState("Copiar enlace");
+
+  async function copyLink() {
+    const origin = window.location.origin;
+    const url = `${origin}${path}`;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setLabel("Copiado");
+      window.setTimeout(() => setLabel("Copiar enlace"), 1800);
+    } catch {
+      setLabel("No se pudo copiar");
+      window.setTimeout(() => setLabel("Copiar enlace"), 2200);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={copyLink}
+      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink) transition hover:border-(--color-gold)"
+    >
+      {label}
+    </button>
   );
 }
 
@@ -354,7 +389,7 @@ function SaveButton() {
       disabled={pending}
       className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-4 py-2 text-xs uppercase tracking-[0.16em] text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {pending ? "Saving..." : "Save changes"}
+      {pending ? "Guardando…" : "Guardar cambios"}
     </button>
   );
 }

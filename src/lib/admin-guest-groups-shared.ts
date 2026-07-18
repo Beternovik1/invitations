@@ -52,7 +52,7 @@ export type AdminGuestGroupErrorCode =
 
 export interface AdminGuestGroupError {
   code: AdminGuestGroupErrorCode;
-  /** English, admin-facing message. */
+  /** Mensaje en español para el administrador. */
   message: string;
   /** Field-level hints for inline form feedback, keyed by field name. */
   fields?: Partial<

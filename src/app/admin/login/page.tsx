@@ -28,7 +28,7 @@ import LoginForm from "@/app/admin/login/LoginForm";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Admin sign in · Sarahi XV",
+  title: "Iniciar sesión · Sarahi XV",
   robots: { index: false, follow: false },
 };
 
@@ -38,10 +38,10 @@ export default async function AdminLoginPage() {
   }
 
   return (
-    <AdminShell title="Sign in" eyebrow="admin">
+    <AdminShell title="Iniciar sesión" eyebrow="administrador">
       <p className="max-w-prose text-(--color-ink-dim)">
-        Enter the access key to view the RSVP overview. The key is intentionally
-        not linked anywhere on the public invitation.
+        Ingresa la clave de acceso para ver las confirmaciones. La clave no
+        está enlazada en ningún lado de la invitación pública adrede.
       </p>
       <LoginForm />
     </AdminShell>
@@ -50,15 +50,16 @@ export default async function AdminLoginPage() {
 
 function SetupRequired() {
   return (
-    <AdminShell title="Setup required" eyebrow="admin">
+    <AdminShell title="Configuración pendiente" eyebrow="administrador">
       <p className="max-w-prose">
-        The admin overview is gated by an <code>ADMIN_ACCESS_KEY</code>{" "}
-        environment variable, and it is not set on this deployment.
+        El panel de administración está protegido por la variable de entorno{" "}
+        <code>ADMIN_ACCESS_KEY</code>, que no está configurada en este
+        despliegue.
       </p>
       <p className="mt-4 max-w-prose text-(--color-ink-dim)">
-        Set <code>ADMIN_ACCESS_KEY</code> to a long, randomly generated string
-        (for example, 32+ characters) in your hosting environment, then open
-        <code className="mx-1">/admin/login</code>.
+        Define <code>ADMIN_ACCESS_KEY</code> con una cadena larga y aleatoria
+        (por ejemplo, 32 caracteres o más) en tu entorno de hospedaje y luego
+        abre <code className="mx-1">/admin/login</code>.
       </p>
     </AdminShell>
   );

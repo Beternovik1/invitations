@@ -11,7 +11,7 @@
  */
 function AdminShell({
   title,
-  eyebrow = "admin",
+  eyebrow = "administrador",
   headerActions,
   children,
 }: {
