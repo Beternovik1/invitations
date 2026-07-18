@@ -27,7 +27,7 @@ export default function LoginForm() {
         htmlFor={inputId}
         className="block text-xs uppercase tracking-[0.18em] text-(--color-gold-soft)"
       >
-        Access key
+        Clave de acceso
       </label>
       <input
         id={inputId}
@@ -50,7 +50,7 @@ export default function LoginForm() {
         </p>
       ) : (
         <p id="login-error" className="sr-only">
-          Enter the admin access key to continue.
+          Ingresa la clave de acceso de administrador para continuar.
         </p>
       )}
 
@@ -59,7 +59,7 @@ export default function LoginForm() {
         disabled={pending}
         className="mt-5 inline-flex items-center justify-center rounded-xl bg-(--color-dusty-teal) px-5 py-3 text-sm font-medium text-(--color-cream-white) transition hover:bg-(--color-ink) disabled:opacity-60"
       >
-        {pending ? "Signing in…" : "Sign in"}
+        {pending ? "Iniciando sesión…" : "Iniciar sesión"}
       </button>
     </form>
   );

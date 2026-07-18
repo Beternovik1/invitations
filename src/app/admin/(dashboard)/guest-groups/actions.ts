@@ -58,7 +58,7 @@ export async function updateGuestGroupAction(
       error: {
         code: "unexpected",
         message:
-          "Your admin session has expired. Reload the page to sign in again.",
+          "Tu sesión de administrador expiró. Recarga la página para iniciar sesión de nuevo.",
       },
     };
   }
@@ -106,7 +106,7 @@ export async function updateGuestGroupAction(
       error: {
         code: "unexpected",
         message:
-          "Something went wrong while saving this group. Try again in a moment.",
+          "Ocurrió un problema al guardar este grupo. Inténtalo de nuevo en un momento.",
       },
     };
   }

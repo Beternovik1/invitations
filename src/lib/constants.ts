@@ -115,11 +115,11 @@ export const LOCATIONS = [
  * why the itinerary renders as a timeline rather than an unordered grid.
  */
 export const ITINERARY = [
-  { time: "13:00", title: "Ceremonia", description: "Ceremonia religiosa" },
+  { time: "14:00", title: "Misa", description: "Ceremonia religiosa" },
   { time: "16:00", title: "Recepción", description: "Recepción de invitados" },
   { time: "16:30", title: "Comida", description: "Comida" },
-  { time: "19:30", title: "Vals", description: "El vals de Sarahí" },
-  { time: "20:00", title: "Baile", description: "Baile y fiesta" },
+  { time: "17:30", title: "Vals", description: "El vals de Sarahí" },
+  { time: "18:30", title: "Baile", description: "Baile y fiesta" },
 ] as const;
 
 /**
@@ -145,8 +145,8 @@ export const DRESS_CODE = {
  * component.
  */
 export const GALLERY = [
-  { id: "welcome", caption: "Bienvenida", tone: "sage" },
-  { id: "ceremony", caption: "Ceremonia", tone: "teal" },
-  { id: "waltz", caption: "El vals", tone: "gold" },
-  { id: "party", caption: "La fiesta", tone: "cream" },
+  { id: "welcome", caption: "Lupita foto", tone: "sage" },
+  { id: "ceremony", caption: "Lupita foto", tone: "teal" },
+  { id: "waltz", caption: "Lupita foto", tone: "gold" },
+  { id: "party", caption: "Lupita foto", tone: "cream" },
 ] as const;

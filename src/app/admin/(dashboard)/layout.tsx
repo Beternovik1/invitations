@@ -41,7 +41,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { default: "Admin · Sarahi XV", template: "%s · Sarahi XV" },
+  title: { default: "Administrador · Sarahi XV", template: "%s · Sarahi XV" },
   robots: { index: false, follow: false },
 };
 
@@ -66,16 +66,16 @@ export default async function AdminDashboardLayout({
  *  route's own setup-required screen for a consistent misconfig message. */
 function DashboardSetupRequired() {
   return (
-    <AdminShell title="Setup required" eyebrow="admin">
+    <AdminShell title="Configuración pendiente" eyebrow="administrador">
       <p className="max-w-prose">
-        The admin dashboard is gated by an{" "}
-        <code>ADMIN_ACCESS_KEY</code> environment variable, and it is not set
-        on this deployment.
+        El panel de administración está protegido por la variable de entorno{" "}
+        <code>ADMIN_ACCESS_KEY</code>, que no está configurada en este
+        despliegue.
       </p>
       <p className="mt-4 max-w-prose text-(--color-ink-dim)">
-        Set <code>ADMIN_ACCESS_KEY</code> to a long, randomly generated string
-        (for example, 32+ characters) in your hosting environment, then open
-        <code className="mx-1">/admin/login</code>.
+        Define <code>ADMIN_ACCESS_KEY</code> con una cadena larga y aleatoria
+        (por ejemplo, 32 caracteres o más) en tu entorno de hospedaje y luego
+        abre <code className="mx-1">/admin/login</code>.
       </p>
     </AdminShell>
   );

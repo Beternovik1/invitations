@@ -168,17 +168,14 @@ interface NavItem {
   href: string;
   label: string;
   icon: ComponentType<IconProps>;
-  /** When true, render a muted "Soon" pill to signal a placeholder section. */
-  comingSoon?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/admin/rsvps", label: "RSVP overview", icon: IconRsvp },
+  { href: "/admin/rsvps", label: "Confirmaciones", icon: IconRsvp },
   {
     href: "/admin/guest-groups",
-    label: "Guest groups",
+    label: "Modificar invitados",
     icon: IconGroups,
-    comingSoon: true,
   },
 ];
 
@@ -209,7 +206,7 @@ export default function AdminDashboardChrome({
       {mobileOpen ? (
         <button
           type="button"
-          aria-label="Close navigation"
+          aria-label="Cerrar navegación"
           onClick={closeMobile}
           className="fixed inset-0 z-40 bg-(--color-ink)/40 backdrop-blur-sm md:hidden"
         />
@@ -239,7 +236,7 @@ export default function AdminDashboardChrome({
                 Sarahi XV
               </span>
               <span className="block font-serif text-base text-(--color-ink)">
-                admin
+                Administrador
               </span>
             </span>
           </Link>
@@ -250,7 +247,7 @@ export default function AdminDashboardChrome({
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expandir panel" : "Contraer panel"}
             aria-expanded={!collapsed}
             className="hidden rounded-md border border-(--color-glass-border) p-1.5 text-(--color-ink-dim) transition hover:text-(--color-ink) md:inline-flex"
           >
@@ -261,7 +258,7 @@ export default function AdminDashboardChrome({
           <button
             type="button"
             onClick={closeMobile}
-            aria-label="Close navigation"
+            aria-label="Cerrar navegación"
             className="rounded-md border border-(--color-glass-border) p-1.5 text-(--color-ink-dim) md:hidden"
           >
             <IconClose className="h-4 w-4" />
@@ -271,7 +268,7 @@ export default function AdminDashboardChrome({
         {/* Nav */}
         <nav
           className="flex-1 overflow-y-auto px-2 py-4"
-          aria-label="Admin sections"
+          aria-label="Secciones de administración"
         >
           <ul className="flex flex-col gap-1">
             {NAV_ITEMS.map((item) => {
@@ -300,16 +297,6 @@ export default function AdminDashboardChrome({
                     >
                       {item.label}
                     </span>
-                    {item.comingSoon ? (
-                      <span
-                        className={[
-                          "ml-auto rounded-full bg-(--color-gold)/20 px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.16em] text-(--color-gold-soft)",
-                          collapsed ? "md:hidden" : "",
-                        ].join(" ")}
-                      >
-                        Soon
-                      </span>
-                    ) : null}
                   </Link>
                 </li>
               );
@@ -328,7 +315,7 @@ export default function AdminDashboardChrome({
               ].join(" ")}
             >
               <IconLogout className="h-5 w-5 shrink-0" />
-              <span className={collapsed ? "md:hidden" : ""}>Sign out</span>
+              <span className={collapsed ? "md:hidden" : ""}>Cerrar sesión</span>
             </button>
           </form>
         </div>
@@ -341,7 +328,7 @@ export default function AdminDashboardChrome({
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            aria-label="Open navigation"
+            aria-label="Abrir navegación"
             aria-controls={sidebarId}
             aria-expanded={mobileOpen}
             className="rounded-md border border-(--color-glass-border) p-2 text-(--color-ink-dim)"
@@ -349,7 +336,7 @@ export default function AdminDashboardChrome({
             <IconMenu className="h-5 w-5" />
           </button>
           <span className="font-serif text-base text-(--color-ink)">
-            Sarahi XV · admin
+            Sarahi XV · Administrador
           </span>
           <span className="w-9" aria-hidden="true" />
         </div>

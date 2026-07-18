@@ -33,7 +33,7 @@ import {
  */
 
 export const metadata: Metadata = {
-  title: "RSVP overview",
+  title: "Confirmaciones",
 };
 
 export default async function AdminRsvpsPage() {
@@ -54,39 +54,39 @@ function AdminOverview({ groups }: { groups: AdminGuestGroup[] }) {
 
   return (
     <section>
-      <AdminPageHeader title="RSVP overview" eyebrow="admin" />
+      <AdminPageHeader title="Confirmaciones" eyebrow="administrador" />
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
         <SummaryCard
-          label="Assigned seats"
+          label="Lugares asignados"
           value={summary.totalAssignedSeats}
-          hint="Excludes groups with pending seat count"
+          hint="Excluye grupos con lugares por confirmar"
         />
         <SummaryCard
-          label="Confirmed attending"
+          label="Confirmados"
           value={summary.totalConfirmedAttending}
-          hint="Sum of confirmed seat counts"
+          hint="Suma de lugares confirmados"
         />
         <SummaryCard
-          label="Groups confirmed"
+          label="Grupos confirmados"
           value={summary.groupsConfirmed}
-          hint={`${groups.length} groups total`}
+          hint={`${groups.length} grupos en total`}
         />
         <SummaryCard
-          label="Pending response"
+          label="Sin respuesta"
           value={summary.groupsPendingResponse}
-          hint="Have seats, no RSVP yet"
+          hint="Con lugares, sin confirmar"
         />
         <SummaryCard
-          label="Seats pending"
+          label="Lugares por confirmar"
           value={summary.groupsSeatsPending}
-          hint="Seat count not yet set"
+          hint="Lugares sin asignar todavía"
         />
       </div>
 
       <div className="mt-10">
         <h2 className="mb-3 font-serif text-xl text-(--color-ink) md:hidden">
-          All groups
+          Todos los grupos
         </h2>
         <GroupList groups={groups} />
       </div>
@@ -163,9 +163,9 @@ function SummaryCard({
 /* -------------------------------------------------------------------------- */
 
 const STATUS_LABELS: Record<RsvpStatus, string> = {
-  confirmed: "Confirmed",
-  no_response: "No response",
-  seats_pending: "Seats pending",
+  confirmed: "Confirmado",
+  no_response: "Sin respuesta",
+  seats_pending: "Lugares por confirmar",
 };
 
 const STATUS_TONE: Record<RsvpStatus, string> = {
@@ -181,7 +181,7 @@ function GroupList({ groups }: { groups: AdminGuestGroup[] }) {
   if (groups.length === 0) {
     return (
       <p className="rounded-2xl border border-(--color-glass-border) bg-(--color-glass) px-5 py-8 text-(--color-ink-dim)">
-        No active guest groups found.
+        No se encontraron grupos de invitados activos.
       </p>
     );
   }
@@ -195,13 +195,13 @@ function GroupList({ groups }: { groups: AdminGuestGroup[] }) {
         <table className="w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-(--color-glass-border) text-xs uppercase tracking-[0.16em] text-(--color-gold-soft)">
-              <th scope="col" className="p-4 font-medium">Group</th>
-              <th scope="col" className="p-4 font-medium">Slug</th>
-              <th scope="col" className="p-4 font-medium">Seats</th>
-              <th scope="col" className="p-4 font-medium">Status</th>
-              <th scope="col" className="p-4 font-medium">Attending</th>
-              <th scope="col" className="p-4 font-medium">Message</th>
-              <th scope="col" className="p-4 font-medium">Updated</th>
+              <th scope="col" className="p-4 font-medium">Grupo</th>
+              <th scope="col" className="p-4 font-medium">Identificador</th>
+              <th scope="col" className="p-4 font-medium">Lugares</th>
+              <th scope="col" className="p-4 font-medium">Estado</th>
+              <th scope="col" className="p-4 font-medium">Asistentes</th>
+              <th scope="col" className="p-4 font-medium">Mensaje</th>
+              <th scope="col" className="p-4 font-medium">Actualizado</th>
             </tr>
           </thead>
           <tbody>
@@ -231,7 +231,7 @@ function GroupCard({ group }: { group: AdminGuestGroup }) {
   const status = rsvpStatusFor(group);
   const seatsLabel =
     group.assignedSeats == null
-      ? group.seatsNote ?? "Pending"
+      ? group.seatsNote ?? "Por confirmar"
       : String(group.assignedSeats);
   const updatedAt = group.rsvp ? formatDate(group.rsvp.updatedAt) : null;
   const attending = group.rsvp ? group.rsvp.attendingCount : null;
@@ -257,13 +257,13 @@ function GroupCard({ group }: { group: AdminGuestGroup }) {
       <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         <div>
           <dt className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
-            Seats
+            Lugares
           </dt>
           <dd className="mt-1 text-(--color-ink)">{seatsLabel}</dd>
         </div>
         <div>
           <dt className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
-            Attending
+            Asistentes
           </dt>
           <dd className="mt-1 text-(--color-ink)">{attending ?? "—"}</dd>
         </div>
@@ -277,7 +277,7 @@ function GroupCard({ group }: { group: AdminGuestGroup }) {
 
       <p className="mt-3 border-t border-(--color-glass-border) pt-3 text-xs text-(--color-ink-dim)">
         <span className="text-[0.65rem] uppercase tracking-[0.16em]">
-          Updated
+          Actualizado
         </span>{" "}
         {updatedAt ?? "—"}
       </p>
@@ -289,7 +289,7 @@ function GroupRow({ group }: { group: AdminGuestGroup }) {
   const status = rsvpStatusFor(group);
   const seatsLabel =
     group.assignedSeats == null
-      ? group.seatsNote ?? "Pending"
+      ? group.seatsNote ?? "Por confirmar"
       : String(group.assignedSeats);
   const updatedAt = group.rsvp
     ? formatDate(group.rsvp.updatedAt)
