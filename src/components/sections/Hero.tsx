@@ -56,7 +56,7 @@ export default function Hero() {
         sizes="100vw"
       />
       <div
-        className="absolute inset-0 -z-10 bg-[rgba(18,31,27,0.56)]"
+        className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(18,31,27,0.28)_0%,rgba(18,31,27,0.48)_42%,rgba(0,0,0,0.82)_100%)]"
         aria-hidden="true"
       />
       <Fireflies />
