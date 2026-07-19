@@ -49,12 +49,11 @@ export default function InvitationContent({
    */
   showMusicButton?: boolean;
 }) {
-  const hideRsvpSoon = Boolean(rsvpSlot);
   return (
     <main className="relative isolate flex w-full flex-col">
       <div className="page-atmosphere" aria-hidden="true" />
 
-      <Hero hideRsvpSoon={hideRsvpSoon} />
+      <Hero />
       {rsvpSlot}
       <Locations />
       <Itinerary />

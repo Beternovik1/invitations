@@ -147,7 +147,7 @@ body::selection {
    eyebrow. Name is no longer comically oversized, so the two elements read as
    a deliberate pairing rather than a mismatch. */
 .text-clamp-name {
-  font-size: clamp(4rem, 19vw, 14rem);
+  font-size: clamp(3rem, 10vw, 8rem);
   line-height: 0.86;
   letter-spacing: 0.01em;
 }
@@ -184,35 +184,19 @@ body::selection {
   paint-order: stroke fill;
 }
 
-/* Premium gold treatment for the celebrant's name — a "princess movie title"
-   look: a vertical gold gradient clipped to the glyph, a dark forest-green
-   outline for separation from the green backdrop, and layered drop-shadows
-   for a soft amber halo + deep cast shadow.
-
-   `filter: drop-shadow` is used instead of `text-shadow` because the text
-   fill is transparent (gradient is clipped via background-clip); text-shadow
-   would not render on transparent fills. `color` stays a solid gold as a
-   fallback for any browser without `background-clip: text`, so the name is
-   always legible. `paint-order: stroke fill` keeps the stroke beneath the
-   fill so the gradient stays crisp on the glyph face. */
+/* White treatment for the celebrant's name. The typography stays unchanged;
+   only the previous gold fill is removed so the title belongs to the new
+   mist-blue dress palette. A soft ink stroke keeps the white letters readable
+   over the portrait and atmospheric background. */
 .title-gold {
-  color: var(--color-gold-bright);
-  background-image: linear-gradient(
-    180deg,
-    var(--color-cream-bright) 0%,
-    var(--color-gold-bright) 32%,
-    var(--color-gold) 60%,
-    var(--color-gold-soft) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 1.5px rgba(33, 58, 50, 0.78);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  -webkit-text-stroke: 1.25px rgba(33, 58, 50, 0.58);
   paint-order: stroke fill;
   filter:
-    drop-shadow(0 2px 1px rgba(33, 58, 50, 0.55))
-    drop-shadow(0 0 16px rgba(199, 154, 60, 0.5))
-    drop-shadow(0 10px 26px rgba(33, 58, 50, 0.38));
+    drop-shadow(0 2px 1px rgba(33, 58, 50, 0.45))
+    drop-shadow(0 0 18px rgba(255, 255, 255, 0.5))
+    drop-shadow(0 10px 26px rgba(33, 58, 50, 0.28));
 }
 
 .leaf-panel {
