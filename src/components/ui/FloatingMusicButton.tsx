@@ -57,11 +57,10 @@ interface FloatingMusicButtonProps {
  * AbortError) so a browser that blocks playback never throws to the console.
  *
  * It is `fixed` so it stays in its corner across the whole single-page scroll,
- * sitting visually inside the page-level `<OrnamentalFrame>` but above the
- * content (z-index higher than the section stack). Safe-area spacing keeps it
- * off the rounded screen edges and notches, and a responsive gap keeps it clear
- * of tiny-phone content. Reduced-motion visitors get the same control with no
- * motion.
+ * above the content (z-index higher than the section stack). Safe-area spacing
+ * keeps it off the rounded screen edges and notches, and a responsive gap keeps
+ * it clear of tiny-phone content. Reduced-motion visitors get the same control
+ * with no motion.
  */
 const FloatingMusicButton = forwardRef<
   FloatingMusicButtonHandle,

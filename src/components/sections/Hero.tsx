@@ -46,13 +46,10 @@ export default function Hero({
   return (
     <section
       className="relative isolate flex min-h-[100dvh] w-full flex-col items-center justify-center overflow-hidden px-6 py-16 text-center"
-      // Hero no longer paints its own backdrop or its own border: it
+      // Hero no longer paints its own backdrop or decorative border: it
       // participates in the continuous `.page-atmosphere` layer mounted on the
       // page so the opening tone journey is shared with the rest of the
-      // sections instead of cutting in a separate color block, and the page-
-      // level `<OrnamentalFrame>` in `page.tsx` now frames the whole scroll
-      // (hero through last element) so the hero keeps just its fireflies,
-      // title, portrait and countdown.
+      // sections instead of cutting in a separate color block.
     >
       <Fireflies />
 
