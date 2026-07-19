@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import BlessingHosts from "@/components/sections/BlessingHosts";
 import DressCode from "@/components/sections/DressCode";
 import Gallery from "@/components/sections/Gallery";
 import Hero from "@/components/sections/Hero";
@@ -56,6 +57,7 @@ export default function InvitationContent({
 
       <Hero />
       <IntroMessage />
+      <BlessingHosts />
       {rsvpSlot}
       <Locations />
       <Itinerary />
