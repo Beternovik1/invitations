@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import DressCode from "@/components/sections/DressCode";
 import Gallery from "@/components/sections/Gallery";
 import Hero from "@/components/sections/Hero";
+import IntroMessage from "@/components/sections/IntroMessage";
 import Itinerary from "@/components/sections/Itinerary";
 import Locations from "@/components/sections/Locations";
 import MusicSection from "@/components/sections/MusicSection";
@@ -54,6 +55,7 @@ export default function InvitationContent({
       <div className="page-atmosphere" aria-hidden="true" />
 
       <Hero />
+      <IntroMessage />
       {rsvpSlot}
       <Locations />
       <Itinerary />

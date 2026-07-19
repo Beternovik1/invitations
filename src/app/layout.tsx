@@ -14,6 +14,15 @@ const lightfootTitle = localFont({
   display: "swap",
 });
 
+// Local serif face for the intro message section. Self-hosted Baskervville so
+// the invitation line feels more ceremonial without an external request and
+// with zero layout shift.
+const baskervville = localFont({
+  src: "../../fonts/Baskervville/Baskervville-VariableFont_wght.ttf",
+  variable: "--font-baskervville",
+  display: "swap",
+});
+
 // Art Deco serif display face for headings and elegant labels.
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -63,7 +72,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${lightfootTitle.variable} ${cormorant.variable} ${jost.variable} h-full antialiased`}
+      className={`${lightfootTitle.variable} ${baskervville.variable} ${cormorant.variable} ${jost.variable} h-full antialiased`}
     >
       <body className="min-h-full">{children}</body>
     </html>
