@@ -135,8 +135,6 @@ const FloatingMusicButton = forwardRef<
     [play, toggle],
   );
 
-  const titleLine = `${MUSIC.title} · ${MUSIC.artist}`;
-
   // The audio element must render before any gesture can call `play()`, so it
   // is mounted even when the UI is hidden (used on the personalized route to
   // warm the audio instance for the envelope-open tap).
@@ -146,18 +144,12 @@ const FloatingMusicButton = forwardRef<
         className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1.5 sm:bottom-8 sm:right-8 lg:bottom-10 lg:right-10"
         style={{ paddingBottom: "env(safe-area-inset-bottom)", paddingRight: "env(safe-area-inset-right)" }}
       >
-        <span
-          className="pointer-events-auto max-w-[14rem] truncate rounded-full bg-[var(--color-cream-white)]/85 px-3 py-1 font-sans text-[0.66rem] uppercase tracking-[0.18em] text-[var(--color-ink-soft)] shadow-[0_6px_18px_rgba(33,58,50,0.18)] backdrop-blur"
-          style={{ fontFamily: "var(--font-sans)" }}
-        >
-          {titleLine} · Próximamente
-        </span>
         <button
           type="button"
           disabled
           aria-disabled="true"
           aria-label="Reproductor de música próximamente disponible"
-          className="pointer-events-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-glass-border)] bg-[var(--color-cream-white)]/85 text-[var(--color-ink-soft)] shadow-[0_8px_22px_rgba(33,58,50,0.22)] backdrop-blur cursor-not-allowed sm:h-14 sm:w-14"
+          className="pointer-events-auto inline-flex h-12 w-12 cursor-not-allowed items-center justify-center rounded-full border border-[#2E3E50] bg-[#2E3E50] text-white opacity-60 shadow-[0_8px_22px_rgba(33,58,50,0.22)] sm:h-14 sm:w-14"
         >
           <NoteGlyph />
         </button>
@@ -178,21 +170,12 @@ const FloatingMusicButton = forwardRef<
       aria-hidden={hidden ? "true" : undefined}
       style={{ paddingBottom: "env(safe-area-inset-bottom)", paddingRight: "env(safe-area-inset-right)" }}
     >
-      {isPlaying && (
-        <span
-          className="max-w-[14rem] truncate rounded-full bg-[var(--color-cream-white)]/85 px-3 py-1 font-sans text-[0.66rem] uppercase tracking-[0.18em] text-[var(--color-ink)] shadow-[0_6px_18px_rgba(33,58,50,0.18)] backdrop-blur"
-          style={{ fontFamily: "var(--font-sans)" }}
-        >
-          {titleLine}
-        </span>
-      )}
-
       <button
         type="button"
         onClick={toggle}
         aria-label={buttonLabel}
         aria-pressed={isPlaying}
-        className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-gold)] bg-[var(--color-cream-white)] text-[var(--color-gold-soft)] shadow-[0_8px_22px_rgba(33,58,50,0.28)] transition-colors hover:bg-[var(--color-gold)] hover:text-[var(--color-cream-white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-cream-white)] sm:h-14 sm:w-14"
+        className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#2E3E50] bg-[#2E3E50] text-white shadow-[0_8px_22px_rgba(33,58,50,0.28)] transition-[filter,transform] hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-cream-white)] sm:h-14 sm:w-14"
         style={{ fontFamily: "var(--font-sans)" }}
       >
         {isPlaying ? <PauseGlyph /> : <PlayGlyph />}

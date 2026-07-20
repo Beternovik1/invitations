@@ -257,7 +257,7 @@ export default function RsvpSection({
                   type="submit"
                   disabled={pending}
                   aria-label={`Confirmar mis ${seats} ${seatsWord} reservados`}
-                  className="inline-block px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-block rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
                 >
                   {pending ? "Guardando…" : "Confirmar"}
@@ -270,7 +270,7 @@ export default function RsvpSection({
                 aria-expanded={showModify}
                 aria-controls={modifyId}
                 disabled={pending}
-                className="inline-block border px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-block rounded-xl border px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
                 style={{
                   ...BASKERVVILLE,
                   borderColor: GOLD,
@@ -333,7 +333,7 @@ export default function RsvpSection({
                       aria-label="Quitar un asistente"
                       onClick={() => setCount((c) => Math.max(0, c - 1))}
                       disabled={count <= 0}
-                      className="flex h-12 w-12 items-center justify-center text-[1.5rem] leading-none transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-12 w-12 items-center justify-center rounded-xl text-[1.5rem] leading-none transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-40"
                       style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
                     >
                       −
@@ -352,7 +352,7 @@ export default function RsvpSection({
                       aria-label="Agregar un asistente"
                       onClick={() => setCount((c) => Math.min(seats, c + 1))}
                       disabled={count >= seats}
-                      className="flex h-12 w-12 items-center justify-center text-[1.5rem] leading-none transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-12 w-12 items-center justify-center rounded-xl text-[1.5rem] leading-none transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-40"
                       style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
                     >
                       +
@@ -388,7 +388,7 @@ export default function RsvpSection({
                 <button
                   type="submit"
                   disabled={pending}
-                  className="mt-2 inline-block self-center px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-2 inline-block self-center rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
                 >
                   {pending

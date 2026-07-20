@@ -3,13 +3,13 @@ import type { ReactNode } from "react";
 import BlessingHosts from "@/components/sections/BlessingHosts";
 import CountdownSection from "@/components/sections/CountdownSection";
 import DressCode from "@/components/sections/DressCode";
+import FinalThanks from "@/components/sections/FinalThanks";
 import Gallery from "@/components/sections/Gallery";
 import Gifts from "@/components/sections/Gifts";
 import Hero from "@/components/sections/Hero";
 import IntroMessage from "@/components/sections/IntroMessage";
 import Itinerary from "@/components/sections/Itinerary";
 import Locations from "@/components/sections/Locations";
-import MusicSection from "@/components/sections/MusicSection";
 import FloatingMusicButton from "@/components/ui/FloatingMusicButton";
 
 /**
@@ -67,7 +67,7 @@ export default function InvitationContent({
       <DressCode />
       <Gifts />
       <Gallery />
-      <MusicSection />
+      <FinalThanks />
 
       {showMusicButton ? <FloatingMusicButton /> : null}
     </main>

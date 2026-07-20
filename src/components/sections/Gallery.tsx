@@ -1,62 +1,63 @@
-import SectionShell from "@/components/ui/SectionShell";
-import { GALLERY } from "@/lib/constants";
+import PhotoCarousel from "@/components/ui/PhotoCarousel";
+import Reveal, { RevealItem } from "@/components/ui/Reveal";
+import { GALLERY_PHOTOS } from "@/lib/gallery";
 
-/* Each tone maps to a gradient built from the invitation palette so the
-   placeholder cards feel like part of the design rather than grey boxes. */
-const GRADIENTS: Record<(typeof GALLERY)[number]["tone"], string> = {
-  sage: "linear-gradient(135deg, #b8dba0 0%, #77a291 100%)",
-  teal: "linear-gradient(135deg, #77a291 0%, #213a32 100%)",
-  gold: "linear-gradient(135deg, #f2d27a 0%, #c79a3c 100%)",
-  cream: "linear-gradient(135deg, #f9fce4 0%, #eef8c8 100%)",
-};
+/* Self-hosted Edwardian Script + Baskervville, already mounted in
+   `layout.tsx`. Matches Locations / BlessingHosts / DressCode so this
+   section reads as part of the same invitation rather than an outlier. */
+const EDWARDIAN = { fontFamily: "var(--font-edwardian-script)" } as const;
+const BASKERVVILLE = { fontFamily: "var(--font-baskervville)" } as const;
+
+const INK = "#1A1A1A";
+const NIGHT = "#2E3E50";
 
 /**
- * Gallery placeholder grid.
+ * Gallery — Lupita photo carousel.
  *
- * No real images are rendered: each card is a CLS-safe gradient block (fixed
- * aspect-ratio reserves space) with a thin inner gold frame and a caption.
- * When real assets are added, the gradient layer can be swapped for an
- * `<Image>` without changing the grid.
+ * Replaces the previous placeholder gradient grid. The carousel itself
+ * (PhotoCarousel) is the single client island in this section; everything
+ * around it is plain server-rendered markup so the RSVP flow, public route
+ * behavior and invitation composition above stay byte-for-byte unchanged.
+ *
+ * Visual language matches the rest of the invitation: mist-blue ground,
+ * Edwardian Script for the chapter title, Baskervville for the subtitle,
+ * square corners and thin gold borders, no decoration on the slides. The
+ * photos are the experience — the section just frames them.
+ *
+ * Adding a new photo is one line in `src/lib/gallery.ts`; this file does not
+ * change.
  */
 export default function Gallery() {
   return (
-    <SectionShell id="galeria" eyebrow="Galería" title="Momentos por venir">
-      <div className="grid w-full gap-4 sm:grid-cols-2 sm:gap-5">
-        {GALLERY.map((item) => (
-          <figure
-            key={item.id}
-            className="relative overflow-hidden rounded-2xl border border-[var(--color-glass-border)] shadow-[0_12px_30px_rgba(33,58,50,0.22)]"
-            style={{ aspectRatio: "4 / 3" }}
-          >
-            <div
-              className="absolute inset-0"
-              style={{ background: GRADIENTS[item.tone] }}
-              aria-hidden="true"
-            />
-            {/* Inner gold hairline echoes the ornamental frame language. */}
-            <div
-              className="pointer-events-none absolute inset-3 rounded-xl border"
-              style={{ borderColor: "rgba(199, 154, 60, 0.55)" }}
-              aria-hidden="true"
-            />
-            <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(33,58,50,0.55)] to-transparent px-4 py-3 text-left">
-              <span
-                className="font-serif text-lg text-[var(--color-cream-bright)]"
-                style={{ fontFamily: "var(--font-serif)" }}
-              >
-                {item.caption}
-              </span>
-            </figcaption>
-          </figure>
-        ))}
-      </div>
+    <section
+      id="galeria"
+      className="w-full px-6 py-16 sm:py-20"
+      style={{ backgroundColor: "var(--color-mist-blue)" }}
+    >
+      {/* Title + subtitle staggered as a single quiet reveal on scroll-into
+          view. The carousel stays a separate client island below, untouched. */}
+      <Reveal className="flex flex-col items-center">
+        <RevealItem
+          as="h2"
+          className="mx-auto mb-3 text-center text-[clamp(3.25rem,6vw,3.75rem)] leading-none"
+          style={{ ...EDWARDIAN, color: INK }}
+        >
+          Galería
+        </RevealItem>
 
-      <p
-        className="font-sans text-xs text-[var(--color-ink-dim)]"
-        style={{ fontFamily: "var(--font-sans)" }}
-      >
-        Pronto compartiremos los momentos de esta noche.
-      </p>
-    </SectionShell>
+        <RevealItem
+          as="p"
+          className="mx-auto mb-12 max-w-md text-center text-[1.05rem] italic leading-relaxed"
+          style={{ ...BASKERVVILLE, color: NIGHT }}
+        >
+          Un vistazo por algunos momentos de mi vida.
+        </RevealItem>
+      </Reveal>
+
+      {/* The single client island. */}
+      <div className="mx-auto flex w-full max-w-5xl justify-center">
+        <PhotoCarousel photos={GALLERY_PHOTOS} />
+      </div>
+    </section>
   );
 }

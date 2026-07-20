@@ -21,7 +21,7 @@ const SECTION = "src/components/sections/CountdownSection.tsx";
 const SHARED_COUNTDOWN = "src/components/ui/Countdown.tsx";
 const REMOVED_HOOK = "src/lib/useCountdownParts.ts";
 
-test("InvitationContent renders CountdownSection after BlessingHosts and before rsvpSlot", async () => {
+test("InvitationContent renders rsvpSlot before CountdownSection and BlessingHosts", async () => {
   const src = await readSrc(INVITATION);
 
   // Import is present.
@@ -31,7 +31,8 @@ test("InvitationContent renders CountdownSection after BlessingHosts and before 
     "CountdownSection must be imported from its section module",
   );
 
-  // The JSX order: <BlessingHosts />, then <CountdownSection />, then {rsvpSlot}.
+  // The current visual flow: RSVP appears immediately after the intro, then
+  // CountdownSection, then BlessingHosts.
   const blessingIdx = src.indexOf("<BlessingHosts />");
   const countdownIdx = src.indexOf("<CountdownSection />");
   const rsvpIdx = src.indexOf("{rsvpSlot}");
@@ -41,12 +42,12 @@ test("InvitationContent renders CountdownSection after BlessingHosts and before 
   assert.notEqual(rsvpIdx, -1, "{rsvpSlot} must appear in the tree");
 
   assert.ok(
-    blessingIdx < countdownIdx,
-    "<CountdownSection /> must come after <BlessingHosts />",
+    rsvpIdx < countdownIdx,
+    "<CountdownSection /> must come after {rsvpSlot}",
   );
   assert.ok(
-    countdownIdx < rsvpIdx,
-    "<CountdownSection /> must come before {rsvpSlot}",
+    countdownIdx < blessingIdx,
+    "<BlessingHosts /> must come after <CountdownSection />",
   );
 });
 
