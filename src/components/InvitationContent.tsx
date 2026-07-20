@@ -60,9 +60,9 @@ export default function InvitationContent({
       <IntroMessage />
       <BlessingHosts />
       <CountdownSection />
-      {rsvpSlot}
       <Locations />
       <Itinerary />
+      {rsvpSlot}
       <DressCode />
       <Gallery />
       <MusicSection />

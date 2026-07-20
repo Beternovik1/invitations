@@ -92,19 +92,26 @@ export const LOCATIONS = [
   {
     id: "ceremony",
     kind: "ceremony",
-    label: "Ceremonia",
-    time: "13:00 hrs",
-    venue: "Templo de la Sagrada Familia",
-    address: "Blvd. San Roque, Colon, 36597 Irapuato, Gto.",
-    mapsUrl: "https://maps.app.goo.gl/qzTJMAuFoK7Pmv1aA",
+    /** Card title rendered in Edwardian Script inside the "Dónde y Cuándo"
+        section. */
+    label: "Ceremonia Religiosa",
+    /** Local photograph served from /public/photo — referenced from the
+        ceremony card image slot (next/image with object-cover). */
+    image: "/photo/sagrada-familia.png",
+    time: "18:00 hrs",
+    venue: "Iglesia Espíritu Santo",
+    address: "Palacio de Justicia No. 500, Anáhuac, 66457",
+    mapsUrl: "https://maps.app.goo.gl/gbbHB8NQ5vKi3e7g9",
   },
   {
     id: "reception",
     kind: "reception",
     label: "Recepción",
+    image: "/photo/alvori.png",
     time: "16:00 hrs",
     venue: "Jardín Alvori - Salón De Eventos",
     address: "Arq. Enrique del moral Domínguez, 36826 Irapuato, Gto.",
+    /** Preserved existing shared maps link for the reception venue. */
     mapsUrl: "https://maps.app.goo.gl/vD2fhiqZdFtPDKvf7",
   },
 ] as const;
