@@ -4,8 +4,6 @@ import { motion, useReducedMotion, type Variants } from "framer-motion";
 import Image from "next/image";
 
 import { ASSETS, EVENT } from "@/lib/constants";
-import BeadDivider from "@/components/ui/BeadDivider";
-import Countdown from "@/components/ui/Countdown";
 import Fireflies from "@/components/ui/Fireflies";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -31,40 +29,47 @@ const reducedVariants: Variants = {
   show: { transition: { staggerChildren: 0, delayChildren: 0 } },
 };
 
-export default function Hero({
-  /** When true, hide the "Pronto podrás confirmar tu asistencia" teaser. Set on
-   *  the personalized route, where a real RSVP section replaces the teaser so
-   *  the two never contradict. The public landing route leaves it false. */
-  hideRsvpSoon = false,
-}: {
-  hideRsvpSoon?: boolean;
-}) {
+export default function Hero() {
   const reduceMotion = useReducedMotion();
   const container = reduceMotion ? reducedVariants : containerVariants;
   const item = reduceMotion ? reducedVariants : itemVariants;
 
+  const scrollToNextSection = () => {
+    window.scrollBy({ top: window.innerHeight, behavior: "smooth" });
+  };
+
   return (
     <section
       className="relative isolate flex min-h-[100dvh] w-full flex-col items-center justify-center overflow-hidden px-6 py-16 text-center"
-      // Hero no longer paints its own backdrop or its own border: it
+      // Hero no longer paints its own backdrop or decorative border: it
       // participates in the continuous `.page-atmosphere` layer mounted on the
       // page so the opening tone journey is shared with the rest of the
-      // sections instead of cutting in a separate color block, and the page-
-      // level `<OrnamentalFrame>` in `page.tsx` now frames the whole scroll
-      // (hero through last element) so the hero keeps just its fireflies,
-      // title, portrait and countdown.
+      // sections instead of cutting in a separate color block.
     >
+      <Image
+        src={ASSETS.heroPortrait}
+        alt=""
+        fill
+        priority
+        aria-hidden="true"
+        className="-z-20 object-cover object-center"
+        sizes="100vw"
+      />
+      <div
+        className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(18,31,27,0.28)_0%,rgba(18,31,27,0.48)_42%,rgba(0,0,0,0.82)_100%)]"
+        aria-hidden="true"
+      />
       <Fireflies />
 
       <motion.div
-        className="relative z-10 flex w-full max-w-2xl flex-col items-center gap-7 sm:gap-9"
+        className="relative z-10 mt-[34dvh] flex w-full max-w-2xl flex-col items-center gap-5 sm:mt-[38dvh] sm:gap-7"
         variants={container}
         initial="hidden"
         animate="show"
       >
         <motion.span
           variants={item}
-          className="text-clamp-eyebrow font-sans uppercase text-[var(--color-ink)] drop-shadow-[0_1px_0_rgba(249,252,228,0.75)]"
+          className="text-clamp-eyebrow font-sans uppercase text-white drop-shadow-[0_2px_4px_rgba(33,58,50,0.55)]"
           style={{ fontFamily: "var(--font-sans)" }}
         >
           {EVENT.eventType}
@@ -78,50 +83,44 @@ export default function Hero({
           {EVENT.celebrantName}
         </motion.h1>
 
-        <motion.div
-          variants={item}
-          className="flex w-full flex-col items-center gap-3"
-        >
-          <Image
-            src={ASSETS.heroPortrait}
-            alt="Sarahí"
-            width={420}
-            height={560}
-            priority
-            className="w-56 max-w-[68vw] drop-shadow-[0_18px_34px_rgba(33,58,50,0.35)] sm:w-72"
-          />
-        </motion.div>
-
         <motion.p
           variants={item}
-          className="leaf-panel max-w-xl rounded-[2rem] px-5 py-4 text-clamp-sub font-serif italic text-[var(--color-ink)] sm:px-7"
-          style={{ fontFamily: "var(--font-serif)" }}
-        >
-          Acompáñame a celebrar una noche de cuento entre luces del bayou y
-          música de Nueva Orleans.
-        </motion.p>
-
-        <motion.div variants={item} className="w-full">
-          <BeadDivider className="mb-7" />
-          <Countdown />
-        </motion.div>
-
-        <motion.div
-          variants={item}
-          className="flex flex-col items-center gap-1 text-xs uppercase tracking-[0.25em] text-[var(--color-ink-dim)]"
+          className="text-clamp-eyebrow font-sans uppercase text-white drop-shadow-[0_2px_4px_rgba(33,58,50,0.55)]"
           style={{ fontFamily: "var(--font-sans)" }}
         >
-          <span className="font-medium text-[var(--color-ink)]">{EVENT.dateLabel}</span>
-          <span>
-            {EVENT.timeLabel} · {EVENT.cityLabel}
-          </span>
-          {!hideRsvpSoon && (
-            <span className="mt-1 text-[0.62rem] tracking-[0.2em] text-[var(--color-ink)]">
-              {EVENT.rsvpSoonLabel}
-            </span>
-          )}
-        </motion.div>
+          {EVENT.dateLabel}
+        </motion.p>
       </motion.div>
+
+      <motion.button
+        type="button"
+        variants={item}
+        initial="hidden"
+        animate="show"
+        onClick={scrollToNextSection}
+        aria-label="Desliza a la siguiente sección"
+        className="absolute bottom-8 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2 text-white drop-shadow-[0_2px_4px_rgba(18,31,27,0.75)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent sm:bottom-10"
+        style={{ fontFamily: "var(--font-sans)" }}
+      >
+        <span className="text-[0.56rem] font-medium uppercase tracking-[0.26em]">
+          Desliza
+        </span>
+        <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-transparent text-white shadow-[0_10px_24px_rgba(18,31,27,0.58)]">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2.2"
+          >
+            <path d="m7 8 5 5 5-5" />
+            <path d="m7 13 5 5 5-5" />
+          </svg>
+        </span>
+      </motion.button>
     </section>
   );
 }

@@ -1,18 +1,28 @@
 "use client";
 
-import { useActionState, useId } from "react";
-import { motion } from "framer-motion";
+import { useActionState, useId, useRef, useState } from "react";
 
-import SectionShell from "@/components/ui/SectionShell";
 import { submitRsvpAction } from "@/app/i/[slug]/actions";
-import {
-  MAX_RSVP_MESSAGE_LENGTH,
-  type RsvpFormState,
-} from "@/lib/rsvps-shared";
+import { type RsvpFormState } from "@/lib/rsvps-shared";
 import type { GuestGroup } from "@/lib/guest-groups";
 
-/* Inline reveal easing matches the rest of the invitation. */
-const EASE = [0.22, 1, 0.36, 1] as const;
+/* Self-hosted font variables — both are mounted in `app/layout.tsx`
+   (edwardianscriptitc.ttf -> --font-edwardian-script; Baskervville
+   VariableFont_wght -> --font-baskervville). Matches the type split used by
+   the "Dónde y Cuándo" / "Itinerario" sections so the page reads as one piece. */
+const EDWARDIAN = { fontFamily: "var(--font-edwardian-script)" } as const;
+const BASKERVVILLE = { fontFamily: "var(--font-baskervville)" } as const;
+
+/* Card palette — copied verbatim from `Locations.tsx` ("Dónde y Cuándo") so the
+   RSVP card reads as a sibling of the location cards: thin gold frame, dusty
+   blue content panel, navy button with ivory text. Square corners — no
+   border-radius — per the brief. */
+const IVORY = "#F5F3EE";
+const PANEL = "#E6ECF2";
+const GOLD = "#C7A96A";
+const INK = "#1A1A1A";
+const NIGHT = "#2E3E50";
+const STEPPER_TAP_GUARD_MS = 160;
 
 interface RsvpSectionProps {
   /** The guest group this confirmation is addressed to. */
@@ -33,20 +43,33 @@ interface RsvpSectionProps {
 /**
  * RSVP confirmation section for the personalized invitation.
  *
- * Rendered only on `/i/[slug]` (the public landing page never mounts it), after
- * the envelope opens. Submission goes through the `submitRsvpAction` Server
- * Action via `useActionState`, so the service-role key and Supabase access stay
- * on the server. The form is progressively enhanced: it works without client JS
- * for the core submission path (the Server Action is the form action), and
- * `useActionState` adds inline status feedback on top.
+ * Rendered only on `/i/[slug]`, slotted into `<InvitationContent>` after the
+ * `Itinerario` section (preserving the committed section order). Submission
+ * goes through the `submitRsvpAction` Server Action via `useActionState`, so
+ * the service-role key and Supabase access stay on the server.
+ *
+ * Design: a single centered card framed by a hairline gold border on the same
+ * mist-blue background as "Dónde y Cuándo". The title `Invitacion para:` is set
+ * in Edwardian Script — the exact face used by the `Itinerario` title. The
+ * family/group name (`group.displayName`) and all body content are set in
+ * Baskervville — the exact face used in the location card body. The card offers
+ * two distinct actions:
+ *
+ *   1. A direct `Confirmar` button that submits a hidden form with
+ *      `attendingCount = group.assignedSeats` (and an empty message) through
+ *      the same `formAction`. One tap confirms the full reserved count.
+ *   2. A `Modificar` button (`type="button"`) that reveals a second form to
+ *      change the number of assistants (0..assignedSeats) via a circular +/−
+ *      stepper. The current count is submitted as a hidden `attendingCount`
+ *      field through the SAME `formAction`; the display itself is not
+ *      directly editable. No free-text message control is offered.
  *
  * States:
- *   - Seats pending (`assignedSeats` null): the host has not set the count yet.
- *     Show a clear Spanish message and a disabled form so the guest knows RSVP
- *     is not forgotten, just waiting.
- *   - Supabase not configured (`rsvpEnabled` false): show a local notice and no
- *     working form — never pretend a mock write succeeded.
- *   - Otherwise: an interactive form capped at `assignedSeats`, prefilled from
+ *   - Seats pending (`assignedSeats` null): the host has not set the count
+ *     yet. Show a clear Spanish message and no working confirm buttons.
+ *   - Supabase not configured (`rsvpEnabled` false): show a local notice and
+ *     no working form — never pretend a mock write succeeded.
+ *   - Otherwise: the interactive card described above, prefilled from
  *     `initialRsvp` when one exists (treated as an update).
  */
 export default function RsvpSection({
@@ -60,200 +83,352 @@ export default function RsvpSection({
   const readonly = seatsPending || !rsvpEnabled;
 
   // Bind the server action to this group's slug. `useActionState` then calls it
-  // as (prevState, formData). The binding keeps the slug on the server; only the
-  // action reference reaches the client.
+  // as (prevState, formData). The binding keeps the slug on the server; only
+  // the action reference reaches the client. The SAME action reference is
+  // reused by both the direct-confirm form and the modify form so they share
+  // one state slot.
   const boundAction = rsvpEnabled ? submitRsvpAction.bind(null, group.slug) : null;
 
   const initialState: RsvpFormState = { status: "idle", rsvp: initialRsvp };
   // `useActionState` requires an action; when readonly we pass a no-op sentinel
-  // so the hook signature stays stable (the form is never submitted in that
-  // mode because the button is disabled).
+  // so the hook signature stays stable (no form is rendered in that mode, so
+  // the sentinel never runs).
   const [state, formAction, pending] = useActionState<RsvpFormState, FormData>(
     boundAction ?? noopAction,
-    initialState
+    initialState,
   );
 
   const confirmed = state.rsvp ?? initialRsvp;
   const lastError = state.status === "error" ? state.error : null;
 
+  // Local UI state for the modify form reveal. Default hidden: the primary
+  // path is the one-tap direct confirm; modifying is the opted-in branch.
+  const [showModify, setShowModify] = useState(false);
+
+  // Stepper count for the modify form. Initialized lazily from any existing
+  // RSVP (`confirmed.attendingCount`) and clamped to `0..seats`; falls back
+  // to the full reserved seat count when there is no confirmation yet. The
+  // value rides to the server as a hidden `attendingCount` field; the
+  // visible number is read-only.
+  //
+  // `useState`'s lazy initializer runs ONLY on mount. When the guest opens
+  // `Modificar`, we reset the stepper from the latest confirmed RSVP right in
+  // that button handler. After the form is open, +/- clicks are purely local
+  // until the guest submits. Do NOT resync during render: delayed Server Action
+  // state can otherwise fight fast +/- clicks and make the number jump.
+  const [count, setCount] = useState<number>(() =>
+    computeInitialCount(confirmed?.attendingCount, seats),
+  );
+  const lastStepperTapAt = useRef(0);
+
+  const toggleModify = () => {
+    setShowModify((open) => {
+      const nextOpen = !open;
+      if (nextOpen) {
+        setCount(computeInitialCount(confirmed?.attendingCount, seats));
+      }
+      return nextOpen;
+    });
+  };
+
+  const updateCount = (direction: -1 | 1) => {
+    const now = Date.now();
+    if (now - lastStepperTapAt.current < STEPPER_TAP_GUARD_MS) {
+      return;
+    }
+    lastStepperTapAt.current = now;
+
+    setCount((current) =>
+      Math.min(seats, Math.max(0, current + direction)),
+    );
+  };
+
   const fieldsetId = useId();
+  const modifyId = `${fieldsetId}-modify`;
+  const countLabelId = `${fieldsetId}-count-label`;
+  const countHintId = `${fieldsetId}-count-hint`;
+  const countErrorId = `${fieldsetId}-count-error`;
+  const seatsWord = seats === 1 ? "lugar" : "lugares";
 
   return (
-    <SectionShell
+    <section
       id="rsvp"
-      eyebrow="Confirma tu asistencia"
-      title="¿Nos acompañarás?"
+      className="w-full px-6 py-16 sm:py-20"
+      style={{ backgroundColor: "var(--color-mist-blue)" }}
     >
-      <motion.div
-        className="leaf-panel w-full max-w-xl rounded-2xl p-6 text-left sm:p-8"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: EASE }}
+      {/* Section title — Edwardian Script, the exact face used by the
+          `Itinerario` title. Same clamp scale so chapter headings match. */}
+      <h2
+        className="mx-auto mb-10 text-center text-[clamp(3.25rem,6vw,3.75rem)] leading-none"
+        style={{ ...EDWARDIAN, color: INK }}
       >
-        {/* Seat context line: the limit is the single most important fact for
-            this form, so it tops the card in every state. */}
-        <p
-          className="font-sans text-sm text-[var(--color-ink-dim)]"
-          style={{ fontFamily: "var(--font-sans)" }}
+        Invitacion para:
+      </h2>
+
+      {/* Card: thin 1px gold frame, square corners, dusty-blue content panel —
+          a sibling of the location cards. */}
+      <div
+        className="mx-auto w-full max-w-xl border"
+        style={{ borderColor: GOLD }}
+      >
+        <div
+          className="flex flex-col items-center px-6 py-10 text-center sm:px-10"
+          style={{ backgroundColor: PANEL }}
         >
-          {seatsPending ? (
-            <>{group.seatsNote ?? "Por confirmar"}</>
-          ) : (
-            <>
-              Tienes{" "}
-              <strong className="text-[var(--color-ink)]">{seats}</strong>{" "}
-              {seats === 1 ? "lugar reservado" : "lugares reservados"} para ti.
-            </>
-          )}
-        </p>
-
-        {/* Pending-seat notice: RSVP is not available yet, but it is not
-            forgotten either. */}
-        {seatsPending && (
+          {/* Group / family name — Baskervville, the exact face used in the
+              location card body. The single most legible line on the card. */}
           <p
-            className="mt-4 font-serif text-base italic text-[var(--color-ink)]"
-            style={{ fontFamily: "var(--font-serif)" }}
+            className="text-[2rem] leading-snug"
+            style={{ ...BASKERVVILLE, color: NIGHT }}
           >
-            Aún estamos confirmando el número de lugares para tu grupo. Te
-            avisaremos en cuanto puedas confirmar tu asistencia.
+            {group.displayName}
           </p>
-        )}
 
-        {/* No-backend notice: local / zero-config builds stay honest. */}
-        {!rsvpEnabled && (
-          <p
-            className="mt-4 font-serif text-base italic text-[var(--color-ink)]"
-            style={{ fontFamily: "var(--font-serif)" }}
-          >
-            La confirmación de asistencia no está disponible en este entorno.
-          </p>
-        )}
-
-        {/* Current confirmation banner (prefill feedback). Shown whenever a
-            saved RSVP exists, including after a successful update. */}
-        {!readonly && confirmed && (
-          <p
-            className="mt-4 font-sans text-sm text-[var(--color-ink)]"
-            style={{ fontFamily: "var(--font-sans)" }}
-            role="status"
-          >
-            {state.status === "success" && (
-              <strong className="text-[var(--color-gold-soft)]">
-                ¡Gracias!{" "}
-              </strong>
-            )}
-            Confirmaste {confirmed.attendingCount} de {seats}{" "}
-            {seats === 1 ? "lugar" : "lugares"}. Puedes actualizar tu respuesta
-            cuando quieras.
-          </p>
-        )}
-
-        {/* Error feedback. Field-level hints inline below each control. */}
-        {lastError && (
-          <p
-            className="mt-4 rounded-lg border border-[var(--color-gold)]/40 bg-[var(--color-pale-yellow-green)]/50 px-4 py-3 font-sans text-sm text-[var(--color-ink)]"
-            style={{ fontFamily: "var(--font-sans)" }}
-            role="alert"
-          >
-            {lastError.message}
-          </p>
-        )}
-
-        {!readonly && (
-          <form action={formAction} className="mt-6 flex flex-col gap-5">
-            <fieldset
-              id={fieldsetId}
-              disabled={pending}
-              className="flex flex-col gap-5"
+          {/* Seat context line: Tienes x lugares reservados para ti.
+              Singular handled gracefully. Bold number per brief. */}
+          {!seatsPending && (
+            <p
+              className="mt-3 text-[1.1rem] leading-relaxed"
+              style={{ ...BASKERVVILLE, color: NIGHT }}
             >
-              <legend className="sr-only">Datos de confirmación</legend>
+              Tienes{" "}
+              <strong className="font-bold">{seats}</strong>{" "}
+              {seats === 1 ? "lugar reservado" : "lugares reservados"} para ti.
+            </p>
+          )}
 
-              <div className="flex flex-col gap-2">
-                <label
-                  htmlFor={`${fieldsetId}-count`}
-                  className="font-sans text-xs uppercase tracking-[0.22em] text-[var(--color-gold-soft)]"
-                  style={{ fontFamily: "var(--font-sans)" }}
-                >
-                  Asistentes
-                </label>
-                <input
-                  id={`${fieldsetId}-count`}
-                  name="attendingCount"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={seats}
-                  step={1}
-                  required
-                  defaultValue={
-                    confirmed ? String(confirmed.attendingCount) : ""
-                  }
-                  aria-describedby={
-                    lastError?.fields?.attendingCount
-                      ? `${fieldsetId}-count-error`
-                      : undefined
-                  }
-                  className="rounded-lg border border-[var(--color-gold)]/50 bg-[var(--color-cream-white)] px-4 py-3 font-sans text-base text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-cream-white)] disabled:opacity-60"
-                  style={{ fontFamily: "var(--font-sans)" }}
-                />
-                <span
-                  className="font-sans text-xs text-[var(--color-ink-dim)]"
-                  style={{ fontFamily: "var(--font-sans)" }}
-                >
-                  De 0 a {seats} {seats === 1 ? "lugar" : "lugares"}.
-                </span>
-                {lastError?.fields?.attendingCount && (
-                  <span
-                    id={`${fieldsetId}-count-error`}
-                    className="font-sans text-xs text-[var(--color-gold-soft)]"
-                    style={{ fontFamily: "var(--font-sans)" }}
-                  >
-                    {lastError.fields.attendingCount}
-                  </span>
-                )}
-              </div>
+          {/* Pending-seat notice: RSVP is not available yet, but not forgotten. */}
+          {seatsPending && (
+            <p
+              className="mt-4 max-w-md text-[1rem] italic leading-relaxed"
+              style={{ ...BASKERVVILLE, color: NIGHT }}
+              role="status"
+            >
+              {group.seatsNote ?? "Por confirmar"}
+              <br />
+              Aún estamos confirmando el número de lugares para tu grupo. Te
+              avisaremos en cuanto puedas confirmar tu asistencia.
+            </p>
+          )}
 
-              <div className="flex flex-col gap-2">
-                <label
-                  htmlFor={`${fieldsetId}-message`}
-                  className="font-sans text-xs uppercase tracking-[0.22em] text-[var(--color-gold-soft)]"
-                  style={{ fontFamily: "var(--font-sans)" }}
+          {/* No-backend notice: local / zero-config builds stay honest. */}
+          {!rsvpEnabled && (
+            <p
+              className="mt-4 max-w-md text-[1rem] italic leading-relaxed"
+              style={{ ...BASKERVVILLE, color: NIGHT }}
+              role="status"
+            >
+              La confirmación de asistencia no está disponible en este entorno.
+            </p>
+          )}
+
+          {/* Current confirmation banner (prefill / success feedback). Shown
+              whenever a saved RSVP exists, including after a successful update. */}
+          {!readonly && confirmed && (
+            <p
+              className="mt-4 max-w-md text-[1rem] leading-relaxed"
+              style={{ ...BASKERVVILLE, color: NIGHT }}
+              role="status"
+            >
+              {state.status === "success" && (
+                <strong>¡Gracias! </strong>
+              )}
+              Confirmaste {confirmed.attendingCount} de {seats} {seatsWord}.
+              Puedes actualizar tu respuesta cuando quieras.
+            </p>
+          )}
+
+          {/* Error feedback. Field-level hints inline below each control. */}
+          {lastError && (
+            <p
+              className="mt-4 max-w-md border px-4 py-3 text-[0.95rem] leading-relaxed"
+              style={{ ...BASKERVVILLE, color: NIGHT, borderColor: GOLD }}
+              role="alert"
+            >
+              {lastError.message}
+            </p>
+          )}
+
+          {/* Action row: direct confirm (solid navy) + modify (outline). Only
+              rendered when the section is interactive (seats known + backend
+              on). The direct confirm is its own tiny form with hidden fields so
+              the existing Server Action receives the full seat count without
+              any client-side onClick call. */}
+          {!readonly && !seatsPending && (
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <form action={formAction}>
+                <input type="hidden" name="attendingCount" value={seats} />
+                <input type="hidden" name="message" value="" />
+                <button
+                  type="submit"
+                  disabled={pending}
+                  aria-label={`Confirmar mis ${seats} ${seatsWord} reservados`}
+                  className="inline-block cursor-pointer rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
                 >
-                  Mensaje para Sarahí (opcional)
-                </label>
-                <textarea
-                  id={`${fieldsetId}-message`}
-                  name="message"
-                  rows={3}
-                  maxLength={MAX_RSVP_MESSAGE_LENGTH}
-                  defaultValue={confirmed?.message ?? ""}
-                  className="resize-y rounded-lg border border-[var(--color-gold)]/50 bg-[var(--color-cream-white)] px-4 py-3 font-serif text-base text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-cream-white)] disabled:opacity-60"
-                  style={{ fontFamily: "var(--font-serif)" }}
-                />
-              </div>
+                  {pending ? "Guardando…" : "Confirmar"}
+                </button>
+              </form>
 
               <button
-                type="submit"
-                className="mt-1 inline-flex items-center justify-center gap-2 rounded-full border border-[var(--color-gold)] px-7 py-3 font-sans text-xs uppercase tracking-[0.24em] text-[var(--color-gold-soft)] transition-colors hover:bg-[var(--color-gold)] hover:text-[var(--color-cream-white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-cream-white)] disabled:cursor-not-allowed disabled:opacity-70"
-                style={{ fontFamily: "var(--font-sans)" }}
+                type="button"
+                onClick={toggleModify}
+                aria-expanded={showModify}
+                aria-controls={modifyId}
+                disabled={pending}
+                className="inline-block cursor-pointer rounded-xl border px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
+                style={{
+                  ...BASKERVVILLE,
+                  borderColor: GOLD,
+                  color: NIGHT,
+                  backgroundColor: "transparent",
+                }}
               >
-                {pending
-                  ? "Guardando…"
-                  : confirmed
-                    ? "Actualizar confirmación"
-                    : "Confirmar asistencia"}
+                {showModify ? "Cerrar" : "Modificar"}
               </button>
-            </fieldset>
-          </form>
-        )}
-      </motion.div>
-    </SectionShell>
+            </div>
+          )}
+
+          {/* Modify form: revealed by the `Modificar` button. Lets the guest
+              change `attendingCount` from 0..assigned seats through the SAME
+              Server Action via a circular +/− stepper. The number is not
+              directly editable; its current value is carried to the server as a
+              hidden `attendingCount` field. Server-side field errors on
+              `attendingCount` are connected to the stepper group via
+              aria-describedby (and auto-announced by the role="alert" span). */}
+          {!readonly && !seatsPending && showModify && (
+            <form
+              id={modifyId}
+              action={formAction}
+              className="mt-8 w-full max-w-md"
+            >
+              <fieldset
+                disabled={pending}
+                className="flex flex-col gap-5"
+              >
+                <legend className="sr-only">Modifica tu confirmación</legend>
+
+                <div
+                  role="group"
+                  aria-labelledby={countLabelId}
+                  aria-describedby={
+                    lastError?.fields?.attendingCount
+                      ? countErrorId
+                      : countHintId
+                  }
+                  className="flex flex-col items-center gap-3"
+                >
+                  <span
+                    id={countLabelId}
+                    className="text-[0.8rem] uppercase tracking-[0.2em]"
+                    style={{ ...BASKERVVILLE, color: NIGHT }}
+                  >
+                    Asistentes
+                  </span>
+
+                  {/* Stepper buttons operate the count; the group is connected to the
+                      server-side field error via aria-describedby (role="group"
+                      supports it) and the error span carries role="alert" so
+                      the rejection auto-announces. `aria-invalid` isn't hosted
+                      here — neither `group` nor `button` allows it under this
+                      project's jsx-a11y config, so per the spec ("if
+                      appropriate") it is dropped. */}
+                  <div className="flex items-center justify-center gap-6">
+                    <button
+                      type="button"
+                      aria-label="Quitar un asistente"
+                      onClick={() => updateCount(-1)}
+                      disabled={count <= 0}
+                      className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-xl text-[1.5rem] leading-none transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
+                    >
+                      −
+                    </button>
+
+                    <output
+                      aria-live="polite"
+                      className="min-w-[3rem] text-center text-[2rem] leading-none"
+                      style={{ ...BASKERVVILLE, color: NIGHT }}
+                    >
+                      {count}
+                    </output>
+
+                    <button
+                      type="button"
+                      aria-label="Agregar un asistente"
+                      onClick={() => updateCount(1)}
+                      disabled={count >= seats}
+                      className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-xl text-[1.5rem] leading-none transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <span
+                    id={countHintId}
+                    className="text-[0.8rem]"
+                    style={{ ...BASKERVVILLE, color: NIGHT }}
+                  >
+                    De 0 a {seats} {seatsWord}.
+                  </span>
+                  {lastError?.fields?.attendingCount && (
+                    <span
+                      id={countErrorId}
+                      className="text-[0.8rem]"
+                      style={{ ...BASKERVVILLE, color: NIGHT }}
+                      role="alert"
+                    >
+                      {lastError.fields.attendingCount}
+                    </span>
+                  )}
+                </div>
+
+                {/* The stepper value is submitted as a hidden field so the
+                    existing Server Action keeps reading `attendingCount` from
+                    the FormData as before. `message` is pinned empty to match
+                    the direct-confirm form — there is no message UI anymore. */}
+                <input type="hidden" name="attendingCount" value={count} />
+                <input type="hidden" name="message" value="" />
+
+                <button
+                  type="submit"
+                  disabled={pending}
+                  className="mt-2 inline-block cursor-pointer self-center rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
+                >
+                  {pending
+                    ? "Guardando…"
+                    : confirmed
+                      ? "Actualizar"
+                      : "Guardar"}
+                </button>
+              </fieldset>
+            </form>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
+/** Compute the stepper's count from the latest known confirmation, clamped
+ *  to `0..seats`. Used by the lazy `useState` initializer (mount) and when
+ *  the user explicitly opens the modify form, so initialization stays
+ *  consistent without render-time resync. */
+function computeInitialCount(
+  attendingCount: number | undefined,
+  seats: number,
+): number {
+  if (typeof attendingCount === "number" && Number.isFinite(attendingCount)) {
+    return Math.min(seats, Math.max(0, attendingCount));
+  }
+  return seats;
+}
+
 /** No-op action used only when the section is readonly, so `useActionState`
- *  always receives a valid function. It never runs because the submit button is
- *  not rendered in readonly mode. */
+ *  always receives a valid function. It never runs because no form is rendered
+ *  in readonly mode. */
 async function noopAction(prevState: RsvpFormState): Promise<RsvpFormState> {
   return prevState;
 }

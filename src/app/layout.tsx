@@ -14,6 +14,35 @@ const lightfootTitle = localFont({
   display: "swap",
 });
 
+// Local serif face for the intro message section. Self-hosted Baskervville so
+// the invitation line feels more ceremonial without an external request and
+// with zero layout shift.
+const baskervville = localFont({
+  src: "../../fonts/Baskervville/Baskervville-VariableFont_wght.ttf",
+  variable: "--font-baskervville",
+  display: "swap",
+});
+
+// Local calligraphic display face for the "blessing / hosts" section — a
+// formal script (Edwardian Script ITC) for the celebrant's parents and
+// padrinos names. Self-hosted via next/font/local so it ships with the rest
+// of the static assets (no external request) and loads with zero layout
+// shift. Labels inside that section stay in the serif face for legibility;
+// this face owns the names and the ceremonial lines.
+const edwardianScript = localFont({
+  src: "../../fonts/edwardianscriptitc.ttf",
+  variable: "--font-edwardian-script",
+  display: "swap",
+});
+
+// Local sans face for host names in the blessing section. The user provided
+// the Google Sans directory and asked that only the names use this family.
+const googleSans = localFont({
+  src: "../../fonts/Google_Sans/GoogleSans-VariableFont_GRAD,opsz,wght.ttf",
+  variable: "--font-google-sans",
+  display: "swap",
+});
+
 // Art Deco serif display face for headings and elegant labels.
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -63,7 +92,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${lightfootTitle.variable} ${cormorant.variable} ${jost.variable} h-full antialiased`}
+      className={`${lightfootTitle.variable} ${baskervville.variable} ${edwardianScript.variable} ${googleSans.variable} ${cormorant.variable} ${jost.variable} h-full antialiased`}
     >
       <body className="min-h-full">{children}</body>
     </html>

@@ -16,6 +16,18 @@
   --color-pale-yellow-green: #eef8c8;
   --color-dusty-teal: #77a291;
 
+  /* New light-blue page background + accent, sampled directly (pixel-picked)
+     from the reference invitation screenshots rather than eyeballed:
+     the page background was #F0F5F9 on every screen sampled (flat, not a
+     gradient), and the "Ver mapa" / confirm buttons were a muted dusty blue
+     around #7F94A7. Kept as their own tokens (instead of overwriting
+     cream-white/dusty-teal) so existing components that reference those two
+     tokens for other purposes — glass-card, leaf-panel, BeadDivider,
+     Gallery's gradient cards — are unaffected by this background swap. */
+  --color-mist-blue: #f0f5f9;
+  --color-mist-blue-deep: #dce6ee;
+  --color-dusty-blue: #7f94a7;
+
   /* Legacy aliases kept for the few places still referencing them; remapped
      onto the new soft palette so old utilities don't fight the new tokens. */
   --color-chartreuse: var(--color-pale-yellow-green);
@@ -39,8 +51,8 @@
   --color-gold-soft: #9c7320;
   --color-gold-bright: #f2d27a;
 
-  /* Blush remapped onto sage (still no pink in the base palette; small pink
-     accents now live only on the OrnamentalFrame top gem). */
+  /* Blush remapped onto sage so the base palette stays aligned with the new
+     blue dress direction. */
   --color-blush: var(--color-sage);
   --color-blush-soft: var(--color-pale-yellow-green);
 
@@ -106,16 +118,26 @@
 
   body {
     /* Flat base color only — the living atmosphere is painted by the
-       `.page-atmosphere` layer in `page.tsx`, which is fixed to the viewport
+       `.page-atmosphere` layer in `InvitationContent`, which is fixed to the viewport
        so it reads as one continuous backdrop across the entire single-page
        scroll instead of resetting per section. Keeping the body fill flat
        avoids double-painting a large radial gradient and reduces first
        paint cost (better LCP). */
-    background-color: var(--color-cream-white);
+    background-color: var(--color-mist-blue);
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  a[href],
+  button:not(:disabled),
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
   }
 }
 
@@ -135,7 +157,7 @@ body::selection {
    eyebrow. Name is no longer comically oversized, so the two elements read as
    a deliberate pairing rather than a mismatch. */
 .text-clamp-name {
-  font-size: clamp(4rem, 19vw, 14rem);
+  font-size: clamp(3rem, 10vw, 8rem);
   line-height: 0.86;
   letter-spacing: 0.01em;
 }
@@ -172,35 +194,19 @@ body::selection {
   paint-order: stroke fill;
 }
 
-/* Premium gold treatment for the celebrant's name — a "princess movie title"
-   look: a vertical gold gradient clipped to the glyph, a dark forest-green
-   outline for separation from the green backdrop, and layered drop-shadows
-   for a soft amber halo + deep cast shadow.
-
-   `filter: drop-shadow` is used instead of `text-shadow` because the text
-   fill is transparent (gradient is clipped via background-clip); text-shadow
-   would not render on transparent fills. `color` stays a solid gold as a
-   fallback for any browser without `background-clip: text`, so the name is
-   always legible. `paint-order: stroke fill` keeps the stroke beneath the
-   fill so the gradient stays crisp on the glyph face. */
+/* White treatment for the celebrant's name. The typography stays unchanged;
+   only the previous gold fill is removed so the title belongs to the new
+   mist-blue dress palette. A soft ink stroke keeps the white letters readable
+   over the portrait and atmospheric background. */
 .title-gold {
-  color: var(--color-gold-bright);
-  background-image: linear-gradient(
-    180deg,
-    var(--color-cream-bright) 0%,
-    var(--color-gold-bright) 32%,
-    var(--color-gold) 60%,
-    var(--color-gold-soft) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 1.5px rgba(33, 58, 50, 0.78);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  -webkit-text-stroke: 1.25px rgba(33, 58, 50, 0.58);
   paint-order: stroke fill;
   filter:
-    drop-shadow(0 2px 1px rgba(33, 58, 50, 0.55))
-    drop-shadow(0 0 16px rgba(199, 154, 60, 0.5))
-    drop-shadow(0 10px 26px rgba(33, 58, 50, 0.38));
+    drop-shadow(0 2px 1px rgba(33, 58, 50, 0.45))
+    drop-shadow(0 0 18px rgba(255, 255, 255, 0.5))
+    drop-shadow(0 10px 26px rgba(33, 58, 50, 0.28));
 }
 
 .leaf-panel {
@@ -224,13 +230,13 @@ body::selection {
 
 /* -------------------------------------------------------------------------- */
 /*  Continuous page atmosphere                                                */
-/*  One full-page backdrop cover so the whole single-page scroll shares a     */
-/*  single tone journey (cream → pale-yellow-green → sage → dusty teal)       */
-/*  instead of each section painting its own color block. Fixed to the        */
-/*  viewport so it never resets while scrolling, with two slow drifting      */
-/*  radial "lights" layered on top to keep the air alive without per-section  */
-/*  color swaps. Purely decorative — `aria-hidden` + `pointer-events-none`    */
-/*  keep it out of the a11y tree and interaction path.                        */
+/*  One full-page backdrop cover, flat light-blue like the reference          */
+/*  invitation (measured #F0F5F9 on every screen — not a gradient journey).   */
+/*  Kept as a fixed layer (rather than collapsing to a plain body color) so   */
+/*  the two slow drifting "lights" below still give the page a tiny bit of   */
+/*  life without reintroducing the old cream → sage → teal hue travel.        */
+/*  Purely decorative — `aria-hidden` + `pointer-events-none` keep it out of  */
+/*  the a11y tree and interaction path.                                       */
 /* -------------------------------------------------------------------------- */
 
 .page-atmosphere {
@@ -239,23 +245,18 @@ body::selection {
   z-index: -1;
   pointer-events: none;
   overflow: hidden;
-  /* The single continuous color journey. The top radial lifts a cream haze at
-     the opening of the page, the bottom radial deepens the cool teal at the
-     close, and the linear gradient stitches them into one continuous tone. */
+  /* Flat mist-blue base with two very soft radial touches (a near-white lift
+     at the top, a faint deepening at the bottom) instead of a multi-hue
+     journey, so the page reads as one calm light-blue field like the
+     reference rather than a dramatic color transition. */
   background:
-    radial-gradient(120% 75% at 50% 8%, var(--color-cream-white) 0%, rgba(249, 252, 228, 0) 58%),
-    radial-gradient(120% 80% at 50% 96%, rgba(119, 162, 145, 0.34) 0%, rgba(119, 162, 145, 0) 62%),
-    linear-gradient(
-      168deg,
-      var(--color-cream-white) 0%,
-      var(--color-pale-yellow-green) 30%,
-      var(--color-sage) 62%,
-      var(--color-dusty-teal) 100%
-    );
+    radial-gradient(120% 75% at 50% 8%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 58%),
+    radial-gradient(120% 80% at 50% 96%, rgba(127, 148, 167, 0.16) 0%, rgba(127, 148, 167, 0) 62%),
+    linear-gradient(180deg, var(--color-mist-blue) 0%, var(--color-mist-blue-deep) 100%);
 }
 
 /* Two soft drifting blooms that breathe slowly — a warm cream glow opening
-   from the top-left and a cool teal glow settling at the bottom-right. They
+   from the top-left and a muted blue glow settling at the bottom-right. They
    animate transform + opacity only (no layout properties) so they stay cheap
    for INP and never cause layout shift. `mix-blend-mode: soft-light` lets
    them tint the gradient beneath without flattening it. */
@@ -283,7 +284,7 @@ body::selection {
   height: 42vmax;
   right: -8vmax;
   bottom: -10vmax;
-  background: radial-gradient(circle, rgba(119, 162, 145, 0.7) 0%, rgba(119, 162, 145, 0) 70%);
+  background: radial-gradient(circle, rgba(127, 148, 167, 0.45) 0%, rgba(127, 148, 167, 0) 70%);
   animation: atmosphere-drift-b 32s ease-in-out infinite alternate;
 }
 

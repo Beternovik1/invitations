@@ -41,8 +41,8 @@ export const EVENT = {
 export const ASSETS = {
   bayouBackground: "/bayou-background-placeholder.jpg",
   goldFrame: "/gold-frame-placeholder.png",
-  ogImage: "/sarahi-portrait.png",
-  heroPortrait: "/sarahi-portrait.png",
+  ogImage: "/photo/sarahi-portrait.png",
+  heroPortrait: "/photo/sarahi-portrait.png",
 } as const;
 
 /**
@@ -92,19 +92,26 @@ export const LOCATIONS = [
   {
     id: "ceremony",
     kind: "ceremony",
-    label: "Ceremonia",
-    time: "13:00 hrs",
+    /** Card title rendered in Edwardian Script inside the "Dónde y Cuándo"
+        section. */
+    label: "Ceremonia Religiosa",
+    /** Local photograph served from /public/photo — referenced from the
+        ceremony card image slot (next/image with object-cover). */
+    image: "/photo/sagrada-familia.png",
+    time: "18:00 hrs",
     venue: "Templo de la Sagrada Familia",
     address: "Blvd. San Roque, Colon, 36597 Irapuato, Gto.",
-    mapsUrl: "https://maps.app.goo.gl/qzTJMAuFoK7Pmv1aA",
+    mapsUrl: "https://maps.app.goo.gl/3niJdi4LkH28dbir7",
   },
   {
     id: "reception",
     kind: "reception",
     label: "Recepción",
+    image: "/photo/alvori.png",
     time: "16:00 hrs",
     venue: "Jardín Alvori - Salón De Eventos",
     address: "Arq. Enrique del moral Domínguez, 36826 Irapuato, Gto.",
+    /** Preserved existing shared maps link for the reception venue. */
     mapsUrl: "https://maps.app.goo.gl/vD2fhiqZdFtPDKvf7",
   },
 ] as const;
