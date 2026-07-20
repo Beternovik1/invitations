@@ -24,7 +24,7 @@ export default function FinalThanks() {
           className="mx-auto max-w-3xl text-[clamp(3.2rem,9vw,5.5rem)] leading-[0.95]"
           style={{ ...EDWARDIAN, color: INK }}
         >
-          Gracias por acompañarme en este día tan especial
+          Gracias por acompañarme en este día tan especial.
         </RevealItem>
 
         <RevealItem variant="soft-scale" className="mt-8">

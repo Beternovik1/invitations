@@ -45,7 +45,7 @@ export default function Locations() {
         className="mx-auto mb-14 text-center text-[clamp(3.25rem,6vw,3.75rem)] leading-none"
         style={{ ...EDWARDIAN, color: INK }}
       >
-        Dónde y Cuándo
+        Fecha y Lugar
       </h2>
 
       <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-10 sm:grid-cols-2 sm:gap-8">

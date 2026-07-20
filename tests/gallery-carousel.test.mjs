@@ -82,8 +82,8 @@ test("Gallery section uses the requested personal subtitle", async () => {
   assert.match(src, /import Reveal, \{ RevealItem \}/, "Gallery title/subtitle must use shared reveal components");
   assert.match(
     src,
-    /Un vistazo por algunos momentos de mi vida\./,
-    "Gallery subtitle must match the requested copy",
+    /Algunos momentos de mi vida\./,
+    "Gallery subtitle must match the preferred short copy",
   );
 });
 

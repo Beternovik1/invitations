@@ -50,7 +50,7 @@ export default function Gallery() {
           className="mx-auto mb-12 max-w-md text-center text-[1.05rem] italic leading-relaxed"
           style={{ ...BASKERVVILLE, color: NIGHT }}
         >
-          Un vistazo por algunos momentos de mi vida.
+          Algunos momentos de mi vida.
         </RevealItem>
       </Reveal>
 
