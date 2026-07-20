@@ -13,6 +13,7 @@ const readSrc = async (rel) =>
 
 const INVITATION = "src/components/InvitationContent.tsx";
 const FINAL_THANKS = "src/components/sections/FinalThanks.tsx";
+const GIFTS = "src/components/sections/Gifts.tsx";
 const MUSIC_BUTTON = "src/components/ui/FloatingMusicButton.tsx";
 
 test("InvitationContent removes MusicSection and ends with FinalThanks", async () => {
@@ -35,6 +36,18 @@ test("FinalThanks uses Edwardian Script text and a drawn heart", async () => {
     "must render the requested closing text",
   );
   assert.match(src, /<svg[\s\S]*<path/, "must draw the heart with SVG");
+});
+
+test("Gifts section marks the registry as optional", async () => {
+  const src = await readSrc(GIFTS);
+
+  assert.match(src, /\(Opcional\)/, "Gifts must show the optional subtitle");
+  assert.match(src, /var\(--font-baskervville\)/, "Gifts optional subtitle must use Baskervville styling");
+  assert.doesNotMatch(
+    src,
+    /<Reveal stagger=\{0\.1\}/,
+    "Gifts card content must not use a nested viewport reveal that can stay hidden on reload",
+  );
 });
 
 test("FloatingMusicButton is icon-only night-blue with white play-pause icons", async () => {

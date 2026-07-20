@@ -70,7 +70,7 @@ test("direct Confirmar form submits hidden attendingCount=seats and empty messag
   );
 });
 
-test("modify form carries the stepper count as hidden attendingCount and uses setCount with clamping", async () => {
+test("modify form carries the stepper count as hidden attendingCount and uses guarded clamping", async () => {
   const src = await readSrc(SECTION);
 
   // The modify form is a second <form> revealed by `showModify` and uses the
@@ -94,22 +94,27 @@ test("modify form carries the stepper count as hidden attendingCount and uses se
     "modify form must submit hidden attendingCount=count",
   );
 
-  // Circular +/- stepper: minus clamps at 0 via Math.max(0, ...), plus clamps
-  // at seats via Math.min(seats, ...), and both go through setCount so the
-  // visible <output>{count}</output> stays the single source of truth.
+  // Circular +/- stepper: both buttons route through the guarded update helper.
+  // The helper clamps at 0..seats and keeps <output>{count}</output> as the
+  // single source of truth.
   assert.match(
     src,
-    /setCount\(\(c\) => Math\.max\(0,\s*c - 1\)\)/,
-    "minus button must clamp via Math.max(0, c - 1) using setCount",
+    /onClick=\{\(\) => updateCount\(-1\)\}/,
+    "minus button must route through the guarded update handler",
   );
   assert.match(
     src,
-    /setCount\(\(c\) => Math\.min\(seats,\s*c \+ 1\)\)/,
-    "plus button must clamp via Math.min(seats, c + 1) using setCount",
+    /onClick=\{\(\) => updateCount\(1\)\}/,
+    "plus button must route through the guarded update handler",
+  );
+  assert.match(
+    src,
+    /setCount\(\(current\) =>\s*Math\.min\(seats,\s*Math\.max\(0,\s*current \+ direction\)\),\s*\);/,
+    "guarded update handler must clamp count to 0..seats",
   );
 });
 
-test("stepper count resyncs to the latest confirmed RSVP and seat count (blocker regression guard)", async () => {
+test("stepper count resets only when modify opens, not during render", async () => {
   const src = await readSrc(SECTION);
 
   // The resync must reuse the same helper as the useState initializer so the
@@ -125,27 +130,54 @@ test("stepper count resyncs to the latest confirmed RSVP and seat count (blocker
     "useState initializer must call computeInitialCount",
   );
 
-  // A direct `Confirmar` submit updates `confirmed.attendingCount` AFTER
-  // mount. The lazy useState initializer only runs once, so there MUST be a
-  // second path that calls `setCount(computeInitialCount(...))` when the
-  // latest confirmed attending count (or seat count) changes — otherwise the
-  // stepper can show / submit a stale count (the original blocker).
+  // A direct `Confirmar` submit updates `confirmed.attendingCount` AFTER mount.
+  // The stepper should sync when the user OPENS modify, not while they are
+  // already clicking +/- quickly, because a delayed Server Action result can
+  // otherwise clobber in-progress edits and make numbers jump backward.
   assert.match(
     src,
-    /setCount\(computeInitialCount\(confirmed\?\.attendingCount,\s*seats\)\)/,
-    "must resync count via setCount(computeInitialCount(confirmed?.attendingCount, seats))",
+    /const toggleModify = \(\) => \{[\s\S]*setCount\(computeInitialCount\(confirmed\?\.attendingCount,\s*seats\)\);[\s\S]*\};/,
+    "must reset count only from the modify toggle handler",
   );
 
-  // The resync must be triggered by a CHANGE in the confirmed attending
-  // count and the seat count, not fire unconditionally every render (which
-  // would clobber manual +/− edits). Both the render-time "store previous
-  // value" idiom and a `useEffect` with the right deps satisfy this; accept
-  // either so the test stays robust to a future refactor.
-  const hasRenderTimeGuard = /confirmed\?\.attendingCount\s*!==/.test(src) && /seats\s*!==/.test(src);
-  const hasEffectDeps = /\[\s*confirmed\?\.attendingCount\s*,\s*seats\s*\]/.test(src);
-  assert.ok(
-    hasRenderTimeGuard || hasEffectDeps,
-    "resync must be gated by a change in confirmed?.attendingCount and seats " +
-      "(render-time !== comparison OR useEffect deps)",
+  assert.doesNotMatch(
+    src,
+    /confirmed\?\.attendingCount !==/,
+    "must not resync solely because confirmed changed while user may be editing",
+  );
+  assert.doesNotMatch(
+    src,
+    /setCount\(computeInitialCount\(confirmed\?\.attendingCount,\s*seats\)\);\s*}\s*if/s,
+    "must not run a render-time resync block after state declarations",
+  );
+});
+
+test("stepper guards against duplicate rapid tap events", async () => {
+  const src = await readSrc(SECTION);
+
+  assert.match(
+    src,
+    /const STEPPER_TAP_GUARD_MS = 160;/,
+    "must define a short duplicate-tap guard window",
+  );
+  assert.match(
+    src,
+    /const lastStepperTapAt = useRef\(0\);/,
+    "must track the last accepted stepper tap outside render state",
+  );
+  assert.match(
+    src,
+    /if \(now - lastStepperTapAt\.current < STEPPER_TAP_GUARD_MS\) \{\s*return;\s*\}/,
+    "must ignore duplicate stepper activations within the guard window",
+  );
+  assert.match(
+    src,
+    /onClick=\{\(\) => updateCount\(-1\)\}/,
+    "minus button must use guarded update handler",
+  );
+  assert.match(
+    src,
+    /onClick=\{\(\) => updateCount\(1\)\}/,
+    "plus button must use guarded update handler",
   );
 });

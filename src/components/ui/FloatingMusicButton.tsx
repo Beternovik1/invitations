@@ -175,7 +175,7 @@ const FloatingMusicButton = forwardRef<
         onClick={toggle}
         aria-label={buttonLabel}
         aria-pressed={isPlaying}
-        className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#2E3E50] bg-[#2E3E50] text-white shadow-[0_8px_22px_rgba(33,58,50,0.28)] transition-[filter,transform] hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-cream-white)] sm:h-14 sm:w-14"
+        className="inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-[#2E3E50] bg-[#2E3E50] text-white shadow-[0_8px_22px_rgba(33,58,50,0.28)] transition-[filter,transform] hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-cream-white)] sm:h-14 sm:w-14"
         style={{ fontFamily: "var(--font-sans)" }}
       >
         {isPlaying ? <PauseGlyph /> : <PlayGlyph />}

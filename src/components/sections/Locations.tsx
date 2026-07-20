@@ -111,7 +111,7 @@ export default function Locations() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Ver mapa de ${loc.venue}`}
-                className="mt-6 inline-block rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                className="mt-6 inline-block cursor-pointer rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                 style={{
                   ...BASKERVVILLE,
                   backgroundColor: NIGHT,

@@ -121,7 +121,7 @@ export default function EnvelopeGate({ group, children }: EnvelopeGateProps) {
                 onClick={handleOpen}
                 disabled={opening || opened}
                 aria-label={`Abrir la invitación para ${group.displayName}`}
-                className="relative mx-auto block h-full aspect-[9/16] w-auto max-w-none overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-bright)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-mist-blue)] disabled:cursor-not-allowed"
+                className="relative mx-auto block h-full aspect-[9/16] w-auto max-w-none cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-bright)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-mist-blue)] disabled:cursor-not-allowed"
                 animate={
                   opening
                     ? { opacity: 0, scale: 1.04, y: -12 }
@@ -148,7 +148,7 @@ export default function EnvelopeGate({ group, children }: EnvelopeGateProps) {
                   transition={{ duration: 0.3, ease: EASE }}
                 >
                   <p
-                    className="mx-auto flex max-w-[22rem] flex-col text-[clamp(3.8rem,15vw,6rem)] leading-[0.78] text-white drop-shadow-[0_2px_2px_rgba(33,58,50,0.55)]"
+                    className="mx-auto flex max-w-[18rem] flex-col text-[3.75rem] leading-[0.78] text-white drop-shadow-[0_2px_2px_rgba(33,58,50,0.55)] sm:max-w-[20rem] sm:text-[4.25rem] lg:text-[4.5rem]"
                     style={{ fontFamily: "var(--font-edwardian-script)" }}
                   >
                     <span>Para:</span>

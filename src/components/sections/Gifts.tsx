@@ -58,10 +58,18 @@ export default function Gifts() {
       <Reveal className="flex flex-col items-center">
         <RevealItem
           as="h2"
-          className="mx-auto mb-10 text-center text-[clamp(3.25rem,6vw,3.75rem)] leading-none"
+          className="mx-auto text-center text-[clamp(3.25rem,6vw,3.75rem)] leading-none"
           style={{ ...EDWARDIAN, color: INK }}
         >
           Regalos
+        </RevealItem>
+
+        <RevealItem
+          as="p"
+          className="mt-3 mb-10 text-[clamp(1.3rem,4.5vw,1.9rem)]"
+          style={{ ...BASKERVVILLE, color: NIGHT }}
+        >
+          (Opcional)
         </RevealItem>
 
         {/* Card: thin 1px gold frame, square corners, dusty-blue content panel —
@@ -75,68 +83,57 @@ export default function Gifts() {
               className="flex flex-col items-center px-6 py-10 text-center sm:px-10"
               style={{ backgroundColor: PANEL }}
             >
-              <Reveal stagger={0.1} delayChildren={0.05}>
-                {/* Liverpool logo — the visual anchor of the card. Decorative; the
-                    event name below is the accessible label for the brand context.
-                    `soft-scale` lands the brand mark with the same tiny settle used
-                    by the dress-code icon / closing heart so the ornaments across
-                    the invitation share one motion. */}
-                <RevealItem
-                  variant="soft-scale"
-                  className="h-auto w-[160px] sm:w-[200px]"
-                >
-                  <Image
-                    src="/photo/liverpool-logo.png"
-                    alt="Liverpool"
-                    width={220}
-                    height={120}
-                    className="h-auto w-full"
-                    sizes="200px"
-                  />
-                </RevealItem>
+              {/* Liverpool logo — the visual anchor of the card. Decorative; the
+                  event name below is the accessible label for the brand context.
+                  Keep this content static inside the already-revealed card: nested
+                  viewport reveals can stay hidden on reload if the browser restores
+                  scroll before the parent reveal finishes. */}
+              <Image
+                src="/photo/liverpool-logo.png"
+                alt="Liverpool"
+                width={220}
+                height={120}
+                className="h-auto w-[160px] sm:w-[200px]"
+                sizes="200px"
+              />
 
-                {/* Event name — Baskervville, the exact face used in the location
-                    card body. The single most legible line on the card. */}
-                <RevealItem
-                  as="p"
-                  className="mt-6 text-[1.6rem] leading-snug"
-                  style={{ ...BASKERVVILLE, color: NIGHT }}
-                >
-                  {GIFT_EVENT_NAME}
-                </RevealItem>
+              {/* Event name — Baskervville, the exact face used in the location
+                  card body. The single most legible line on the card. */}
+              <p
+                className="mt-6 text-[1.6rem] leading-snug"
+                style={{ ...BASKERVVILLE, color: NIGHT }}
+              >
+                {GIFT_EVENT_NAME}
+              </p>
 
-                {/* Event number — small uppercase label + the printed-on-card
-                    value so the guest can also reference it by phone / in store. */}
-                <RevealItem
-                  as="p"
-                  className="mt-2 text-[0.8rem] uppercase tracking-[0.2em]"
-                  style={{ ...BASKERVVILLE, color: NIGHT }}
-                >
-                  No. de evento
-                </RevealItem>
-                <RevealItem
-                  as="p"
-                  className="mt-1 text-[1.4rem] leading-none"
-                  style={{ ...BASKERVVILLE, color: NIGHT }}
-                >
-                  {GIFT_EVENT_NUMBER}
-                </RevealItem>
+              {/* Event number — small uppercase label + the printed-on-card
+                  value so the guest can also reference it by phone / in store. */}
+              <p
+                className="mt-2 text-[0.8rem] uppercase tracking-[0.2em]"
+                style={{ ...BASKERVVILLE, color: NIGHT }}
+              >
+                No. de evento
+              </p>
+              <p
+                className="mt-1 text-[1.4rem] leading-none"
+                style={{ ...BASKERVVILLE, color: NIGHT }}
+              >
+                {GIFT_EVENT_NUMBER}
+              </p>
 
-                {/* VER LISTA DE REGALOS button — night-blue rectangle with a soft radius,
-                    Baskervville uppercase with letter-spacing. Opens the Liverpool
-                    mesa de regalos list in a new tab so the invitation stays light. */}
-                <RevealItem
-                  as="a"
-                  href={GIFT_REGISTRY_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Ver lista de regalos de ${GIFT_EVENT_NAME} en Liverpool (se abre en una nueva pestaña)`}
-                  className="mt-8 inline-block rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2]"
-                  style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
-                >
-                  Ver lista de regalos
-                </RevealItem>
-              </Reveal>
+              {/* VER LISTA DE REGALOS button — night-blue rectangle with a soft radius,
+                  Baskervville uppercase with letter-spacing. Opens the Liverpool
+                  mesa de regalos list in a new tab so the invitation stays light. */}
+              <a
+                href={GIFT_REGISTRY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Ver lista de regalos de ${GIFT_EVENT_NAME} en Liverpool (se abre en una nueva pestaña)`}
+                className="mt-8 inline-block cursor-pointer rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2]"
+                style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
+              >
+                Ver lista de regalos
+              </a>
             </div>
           </div>
         </RevealItem>

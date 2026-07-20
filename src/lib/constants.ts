@@ -99,9 +99,9 @@ export const LOCATIONS = [
         ceremony card image slot (next/image with object-cover). */
     image: "/photo/sagrada-familia.png",
     time: "18:00 hrs",
-    venue: "Iglesia Espíritu Santo",
-    address: "Palacio de Justicia No. 500, Anáhuac, 66457",
-    mapsUrl: "https://maps.app.goo.gl/gbbHB8NQ5vKi3e7g9",
+    venue: "Templo de la Sagrada Familia",
+    address: "Blvd. San Roque, Colon, 36597 Irapuato, Gto.",
+    mapsUrl: "https://maps.app.goo.gl/3niJdi4LkH28dbir7",
   },
   {
     id: "reception",

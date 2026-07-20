@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useId, useState } from "react";
+import { useActionState, useId, useRef, useState } from "react";
 
 import { submitRsvpAction } from "@/app/i/[slug]/actions";
 import { type RsvpFormState } from "@/lib/rsvps-shared";
@@ -22,6 +22,7 @@ const PANEL = "#E6ECF2";
 const GOLD = "#C7A96A";
 const INK = "#1A1A1A";
 const NIGHT = "#2E3E50";
+const STEPPER_TAP_GUARD_MS = 160;
 
 interface RsvpSectionProps {
   /** The guest group this confirmation is addressed to. */
@@ -110,32 +111,37 @@ export default function RsvpSection({
   // value rides to the server as a hidden `attendingCount` field; the
   // visible number is read-only.
   //
-  // `useState`'s lazy initializer runs ONLY on mount, so a direct
-  // `Confirmar` submit that updates `confirmed.attendingCount` AFTER mount
-  // would leave `count` stale when the user later opens `Modificar`. To keep
-  // the stepper synchronized with the latest confirmed RSVP / seat count we
-  // adjust `count` DURING RENDER (storing the previous values) rather than
-  // in a `useEffect`. This is the React 19 idiom for "adjust state when
-  // something changed" — it avoids the extra paint an effect would cause
-  // and keeps `react-hooks/set-state-in-effect` clean. Manual `+`/`−` edits
-  // only touch `setCount` (they do not change `confirmed` or `seats`), so
-  // this guard never fires mid-edit and never clobbers an in-progress change.
+  // `useState`'s lazy initializer runs ONLY on mount. When the guest opens
+  // `Modificar`, we reset the stepper from the latest confirmed RSVP right in
+  // that button handler. After the form is open, +/- clicks are purely local
+  // until the guest submits. Do NOT resync during render: delayed Server Action
+  // state can otherwise fight fast +/- clicks and make the number jump.
   const [count, setCount] = useState<number>(() =>
     computeInitialCount(confirmed?.attendingCount, seats),
   );
+  const lastStepperTapAt = useRef(0);
 
-  const [prevConfirmedCount, setPrevConfirmedCount] = useState(
-    confirmed?.attendingCount,
-  );
-  const [prevSeats, setPrevSeats] = useState(seats);
-  if (
-    confirmed?.attendingCount !== prevConfirmedCount ||
-    seats !== prevSeats
-  ) {
-    setPrevConfirmedCount(confirmed?.attendingCount);
-    setPrevSeats(seats);
-    setCount(computeInitialCount(confirmed?.attendingCount, seats));
-  }
+  const toggleModify = () => {
+    setShowModify((open) => {
+      const nextOpen = !open;
+      if (nextOpen) {
+        setCount(computeInitialCount(confirmed?.attendingCount, seats));
+      }
+      return nextOpen;
+    });
+  };
+
+  const updateCount = (direction: -1 | 1) => {
+    const now = Date.now();
+    if (now - lastStepperTapAt.current < STEPPER_TAP_GUARD_MS) {
+      return;
+    }
+    lastStepperTapAt.current = now;
+
+    setCount((current) =>
+      Math.min(seats, Math.max(0, current + direction)),
+    );
+  };
 
   const fieldsetId = useId();
   const modifyId = `${fieldsetId}-modify`;
@@ -257,7 +263,7 @@ export default function RsvpSection({
                   type="submit"
                   disabled={pending}
                   aria-label={`Confirmar mis ${seats} ${seatsWord} reservados`}
-                  className="inline-block rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-block cursor-pointer rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
                 >
                   {pending ? "Guardando…" : "Confirmar"}
@@ -266,11 +272,11 @@ export default function RsvpSection({
 
               <button
                 type="button"
-                onClick={() => setShowModify((v) => !v)}
+                onClick={toggleModify}
                 aria-expanded={showModify}
                 aria-controls={modifyId}
                 disabled={pending}
-                className="inline-block rounded-xl border px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-block cursor-pointer rounded-xl border px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
                 style={{
                   ...BASKERVVILLE,
                   borderColor: GOLD,
@@ -331,9 +337,9 @@ export default function RsvpSection({
                     <button
                       type="button"
                       aria-label="Quitar un asistente"
-                      onClick={() => setCount((c) => Math.max(0, c - 1))}
+                      onClick={() => updateCount(-1)}
                       disabled={count <= 0}
-                      className="flex h-12 w-12 items-center justify-center rounded-xl text-[1.5rem] leading-none transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-xl text-[1.5rem] leading-none transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-40"
                       style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
                     >
                       −
@@ -350,9 +356,9 @@ export default function RsvpSection({
                     <button
                       type="button"
                       aria-label="Agregar un asistente"
-                      onClick={() => setCount((c) => Math.min(seats, c + 1))}
+                      onClick={() => updateCount(1)}
                       disabled={count >= seats}
-                      className="flex h-12 w-12 items-center justify-center rounded-xl text-[1.5rem] leading-none transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-xl text-[1.5rem] leading-none transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-40"
                       style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
                     >
                       +
@@ -388,7 +394,7 @@ export default function RsvpSection({
                 <button
                   type="submit"
                   disabled={pending}
-                  className="mt-2 inline-block self-center rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-2 inline-block cursor-pointer self-center rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
                 >
                   {pending
@@ -407,9 +413,9 @@ export default function RsvpSection({
 }
 
 /** Compute the stepper's count from the latest known confirmation, clamped
- *  to `0..seats`. Used both for the lazy `useState` initializer (mount) and
- *  the render-time resync when `confirmed.attendingCount` or `seats` changes
- *  after mount, so the two paths can never drift. */
+ *  to `0..seats`. Used by the lazy `useState` initializer (mount) and when
+ *  the user explicitly opens the modify form, so initialization stays
+ *  consistent without render-time resync. */
 function computeInitialCount(
   attendingCount: number | undefined,
   seats: number,

@@ -117,6 +117,7 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
      different from a "prev". */
   const [direction, setDirection] = useState(1);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxChromeVisible, setLightboxChromeVisible] = useState(true);
 
   const total = photos.length;
   const active = photos[index];
@@ -127,6 +128,9 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
   const slideLabelId = `carousel-${reactId}-slide`;
 
   const regionRef = useRef<HTMLDivElement>(null);
+  const didSwipeRef = useRef(false);
+  const pointerStartXRef = useRef<number | null>(null);
+  const lightboxChromeTimerRef = useRef<number | null>(null);
 
   /* `paginate` is the dot navigation handler. Bounds-clamping is unnecessary
      here because `photos` is a static module-level list — it does not shrink
@@ -151,8 +155,40 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
     setIndex((i) => (i + 1) % total);
   }, [total]);
 
+  const markSwipe = useCallback(() => {
+    didSwipeRef.current = true;
+    window.setTimeout(() => {
+      didSwipeRef.current = false;
+    }, 0);
+  }, []);
+
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    pointerStartXRef.current = e.clientX;
+  }, []);
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      const startX = pointerStartXRef.current;
+      pointerStartXRef.current = null;
+      if (startX === null) return;
+
+      const deltaX = e.clientX - startX;
+      if (Math.abs(deltaX) < DRAG_OFFSET_THRESHOLD) return;
+
+      markSwipe();
+      if (deltaX < 0) goNext();
+      else goPrev();
+    },
+    [goNext, goPrev, markSwipe],
+  );
+
+  const onPointerCancel = useCallback(() => {
+    pointerStartXRef.current = null;
+  }, []);
+
   /* Drag-to-swipe — disabled under reduced motion per the brief's "respect
-     reduced motion where practical". */
+     reduced motion where practical". Pointer tracking above backs this up for
+     mouse/touch cases where button/image click behavior wins over Framer drag. */
   const onDragEnd = useCallback(
     (_e: unknown, info: PanInfo) => {
       const { offset, velocity } = info;
@@ -161,11 +197,36 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
       const back =
         offset.x > DRAG_OFFSET_THRESHOLD || velocity.x > DRAG_VELOCITY_THRESHOLD;
 
+      if (forward || back) {
+        markSwipe();
+      }
+
       if (forward) goNext();
       else if (back) goPrev();
     },
-    [goNext, goPrev],
+    [goNext, goPrev, markSwipe],
   );
+
+  const openLightbox = useCallback(() => {
+    if (didSwipeRef.current) return;
+    setLightboxOpen(true);
+    setLightboxChromeVisible(true);
+  }, []);
+
+  const closeLightbox = useCallback(() => {
+    setLightboxOpen(false);
+    setLightboxChromeVisible(true);
+  }, []);
+
+  const showLightboxChrome = useCallback(() => {
+    setLightboxChromeVisible(true);
+    if (lightboxChromeTimerRef.current) {
+      window.clearTimeout(lightboxChromeTimerRef.current);
+    }
+    lightboxChromeTimerRef.current = window.setTimeout(() => {
+      setLightboxChromeVisible(false);
+    }, 1800);
+  }, []);
 
   /* Keyboard: arrow keys move between slides when the region is focused OR
      when the lightbox is open. Escape only closes the lightbox; we don't
@@ -177,7 +238,7 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        setLightboxOpen(false);
+        closeLightbox();
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
         goNext();
@@ -188,7 +249,19 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [lightboxOpen, goNext, goPrev]);
+  }, [lightboxOpen, goNext, goPrev, closeLightbox]);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    lightboxChromeTimerRef.current = window.setTimeout(() => {
+      setLightboxChromeVisible(false);
+    }, 1800);
+    return () => {
+      if (lightboxChromeTimerRef.current) {
+        window.clearTimeout(lightboxChromeTimerRef.current);
+      }
+    };
+  }, [lightboxOpen, showLightboxChrome]);
 
   /* In-carousel keyboard nav (no lightbox): only active while the region is
      focused, so we don't swallow arrows the rest of the page needs. */
@@ -212,6 +285,7 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
          a tap on the photo gives. */
       e.preventDefault();
       setLightboxOpen(true);
+      setLightboxChromeVisible(true);
     }
   };
 
@@ -236,7 +310,7 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
       {/* ---------------------------------------------------------------- */}
       {/*  Carousel frame                                                  */}
       {/* ---------------------------------------------------------------- */}
-      <div className="flex w-full max-w-4xl items-center justify-center gap-2 sm:gap-6">
+      <div className="relative flex w-full max-w-4xl items-center justify-center sm:gap-6">
         <NavButton
           direction="prev"
           onClick={goPrev}
@@ -255,7 +329,7 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
           aria-labelledby={regionLabelId}
           tabIndex={0}
           onKeyDown={onRegionKeyDown}
-          className="group relative w-full max-w-[min(76vw,24rem)] cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--color-mist-blue)] sm:max-w-xl md:max-w-2xl"
+          className="group relative w-full max-w-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--color-mist-blue)] sm:max-w-xl md:max-w-2xl"
           style={{ outlineColor: GOLD }}
         >
           <span id={regionLabelId} className="sr-only">
@@ -284,7 +358,10 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
                 dragElastic={0.18}
                 dragSnapToOrigin
                 onDragEnd={onDragEnd}
-                onClick={() => setLightboxOpen(true)}
+                onPointerDown={onPointerDown}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerCancel}
+                onClick={openLightbox}
                 /* The whole frame is a button to open the lightbox. The
                    visually-hidden label is announced when a screen-reader user
                    lands on it, plus the active slide description below. */
@@ -295,7 +372,7 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
                    the slide focusable would add a redundant tab stop and split
                    the keyboard model (arrows wouldn't work from the slide). */
                 tabIndex={-1}
-                className="absolute inset-0 flex h-full w-full items-center justify-center"
+                className="absolute inset-0 flex h-full w-full cursor-pointer touch-pan-y items-center justify-center"
                 /* The visible keyboard focus signal lives on the region
                    wrapper, not the slide button. */
                 style={{ outline: "none" }}
@@ -304,7 +381,7 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
                   src={active.src}
                   alt={active.alt}
                   fill
-                  sizes="(max-width: 640px) 76vw, (max-width: 1024px) 576px, 672px"
+                  sizes="(max-width: 640px) calc(100vw - 3rem), (max-width: 1024px) 576px, 672px"
                   className="object-cover"
                   priority={index === 0}
                 />
@@ -356,7 +433,11 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
       {/* ---------------------------------------------------------------- */}
       {/*  Dot navigation                                                   */}
       {/* ---------------------------------------------------------------- */}
-      <div className="flex items-center gap-2.5" role="tablist" aria-label="Selecciona una foto">
+      <div
+        className="flex max-w-full flex-wrap items-center justify-center gap-2"
+        role="tablist"
+        aria-label="Selecciona una foto"
+      >
         {photos.map((photo, i) => {
           const isActive = i === index;
           return (
@@ -368,7 +449,7 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
               aria-label={`Ir a la foto ${i + 1}: ${photo.alt}`}
               aria-controls={slideLabelId}
               onClick={() => paginate(i)}
-              className="flex h-4 w-4 items-center justify-center rounded-full p-0 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-mist-blue)]"
+              className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-full p-0 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-mist-blue)]"
               style={{ outlineColor: GOLD }}
             >
               {/* Circular beads — active turns gold, inactive stays quiet ink. */}
@@ -400,14 +481,19 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
             animate="show"
             exit="exit"
             className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[rgba(15,20,26,0.92)] px-4 py-6"
+            onPointerDown={showLightboxChrome}
+            onPointerMove={showLightboxChrome}
+            onTouchStart={showLightboxChrome}
           >
             {/* Close button — named for what it does, circular gold-bordered. */}
             <button
               type="button"
-              onClick={() => setLightboxOpen(false)}
+              onClick={closeLightbox}
               aria-label="Cerrar foto ampliada"
               autoFocus
-              className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border bg-transparent text-2xl leading-none text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(15,20,26,0.92)]"
+              className={`absolute right-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border bg-[rgba(15,20,26,0.5)] text-2xl leading-none text-white transition-[opacity,background-color] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(15,20,26,0.92)] ${
+                lightboxChromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
+              }`}
               style={{ borderColor: GOLD, outlineColor: GOLD }}
             >
               <span aria-hidden="true">×</span>
@@ -415,7 +501,11 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
 
             {/* Image + prev/next inside the dialog. Sizes use 90vw so next/image
                 emits a srcset that fits a phone or a desktop. */}
-            <div className="relative flex max-h-[80vh] max-w-[90vw] flex-1 items-center justify-center">
+            <div
+              className="relative flex max-h-[72vh] max-w-[90vw] flex-1 items-center justify-center sm:max-h-[80vh]"
+              onMouseEnter={showLightboxChrome}
+              onMouseLeave={() => setLightboxChromeVisible(false)}
+            >
               <AnimatePresence custom={direction} initial={false} mode="wait">
                 <motion.div
                   key={active.src}
@@ -425,7 +515,7 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
                   animate="center"
                   exit="exit"
                   transition={transition}
-                  className="relative h-[78vh] w-[88vw] max-w-[min(88vw,560px)]"
+                  className="relative h-[70vh] w-[88vw] max-w-[min(88vw,560px)] sm:h-[78vh]"
                 >
                   <Image
                     src={active.src}
@@ -443,6 +533,7 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
                 disabled={total <= 1}
                 label="Foto anterior"
                 variant="lightbox"
+                visible={lightboxChromeVisible}
               />
               <NavButton
                 direction="next"
@@ -450,11 +541,16 @@ export default function PhotoCarousel({ photos }: PhotoCarouselProps) {
                 disabled={total <= 1}
                 label="Foto siguiente"
                 variant="lightbox"
+                visible={lightboxChromeVisible}
               />
             </div>
 
             {/* Counter inside the dialog. */}
-            <div className="mt-4 flex flex-col items-center gap-1 text-center">
+            <div
+              className={`absolute inset-x-4 bottom-24 flex flex-col items-center gap-1 text-center transition-opacity sm:bottom-10 ${
+                lightboxChromeVisible ? "opacity-100" : "opacity-0"
+              }`}
+            >
               <p
                 className="text-[0.72rem] uppercase tracking-[0.32em] text-white/70"
                 style={{ ...BASKERVVILLE }}
@@ -485,12 +581,14 @@ function NavButton({
   disabled,
   label,
   variant = "inline",
+  visible = true,
 }: {
   direction: "prev" | "next";
   onClick: () => void;
   disabled?: boolean;
   label: string;
   variant?: "inline" | "lightbox";
+  visible?: boolean;
 }) {
   const isPrev = direction === "prev";
   return (
@@ -501,8 +599,14 @@ function NavButton({
       aria-label={label}
       className={
         variant === "lightbox"
-            ? "absolute top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border text-2xl leading-none text-white transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(15,20,26,0.92)] disabled:opacity-30"
-          : "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-xl leading-none text-white transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-mist-blue)] disabled:opacity-30"
+          ? `absolute bottom-4 z-20 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border text-2xl leading-none text-white transition-[opacity,filter] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(15,20,26,0.92)] disabled:cursor-not-allowed disabled:opacity-30 ${
+              isPrev ? "left-4" : "right-4"
+            } ${
+              visible ? "opacity-100" : "pointer-events-none opacity-0"
+            }`
+          : `absolute top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border text-xl leading-none text-white transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-mist-blue)] disabled:cursor-not-allowed disabled:opacity-30 sm:static sm:translate-y-0 ${
+              isPrev ? "left-2" : "right-2"
+            }`
       }
       style={{ backgroundColor: NIGHT, borderColor: NIGHT, outlineColor: GOLD }}
     >

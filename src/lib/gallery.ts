@@ -1,7 +1,7 @@
 /**
  * Gallery photo list for the Lupita photo carousel.
  *
- * Adding a new photo later is exactly one new line: drop `lupita8.jpeg` into
+ * Adding a new photo later is exactly one new line: drop the file into
  * `public/photo/lupita/` and append an entry to `GALLERY_PHOTOS` below. The
  * carousel picks the count up automatically — no component edits required.
  *
@@ -16,14 +16,14 @@ export interface GalleryPhoto {
   /**
    * Accessible description of the photo. Read by screen readers and used as
    * the lightbox's primary label. Must be unique per photo so the carousel
-   * controls ('photo 1 of 7') stay unambiguous.
+ * controls ('photo 1 of 23') stay unambiguous.
    */
   alt: string;
 }
 
 /**
- * Single source of truth for the gallery. The Lupita series currently runs
- * `lupita1.jpeg` through `lupita7.jpeg`; extend the array to add more.
+ * Single source of truth for the gallery. Keep filenames case-sensitive: files
+ * under `public/` are served exactly as named on Linux/Vercel.
  */
 export const GALLERY_PHOTOS: readonly GalleryPhoto[] = [
   {
@@ -53,5 +53,29 @@ export const GALLERY_PHOTOS: readonly GalleryPhoto[] = [
   {
     src: "/photo/lupita/lupita7.jpeg",
     alt: "Lupita cerrando la sesión de fotografía",
+  },
+  {
+    src: "/photo/lupita/lupita5.jpg",
+    alt: "Lupita en una fotografía adicional de la galería",
+  },
+  {
+    src: "/photo/lupita/lupita6.jpg",
+    alt: "Lupita en otra fotografía adicional de la galería",
+  },
+  {
+    src: "/photo/lupita/lupita7.jpg",
+    alt: "Lupita en un momento adicional de la sesión",
+  },
+  {
+    src: "/photo/lupita/lupita8.JPG",
+    alt: "Lupita en la octava fotografía de la galería",
+  },
+  {
+    src: "/photo/lupita/lupita9.JPG",
+    alt: "Lupita en la novena fotografía de la galería",
+  },
+  {
+    src: "/photo/lupita/lupita10.jpg",
+    alt: "Lupita en la décima fotografía de la galería",
   },
 ];
