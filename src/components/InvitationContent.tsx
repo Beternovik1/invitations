@@ -4,6 +4,7 @@ import BlessingHosts from "@/components/sections/BlessingHosts";
 import CountdownSection from "@/components/sections/CountdownSection";
 import DressCode from "@/components/sections/DressCode";
 import Gallery from "@/components/sections/Gallery";
+import Gifts from "@/components/sections/Gifts";
 import Hero from "@/components/sections/Hero";
 import IntroMessage from "@/components/sections/IntroMessage";
 import Itinerary from "@/components/sections/Itinerary";
@@ -58,12 +59,13 @@ export default function InvitationContent({
 
       <Hero />
       <IntroMessage />
-      <BlessingHosts />
+      {rsvpSlot}
       <CountdownSection />
+      <BlessingHosts />
       <Locations />
       <Itinerary />
-      {rsvpSlot}
       <DressCode />
+      <Gifts />
       <Gallery />
       <MusicSection />
 

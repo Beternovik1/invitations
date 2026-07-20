@@ -36,7 +36,7 @@ export default function Locations() {
   return (
     <section
       id="lugar"
-      className="w-full px-6 py-24 sm:py-28"
+      className="w-full px-6 py-16 sm:py-20"
       style={{ backgroundColor: "var(--color-mist-blue)" }}
     >
       {/* Section title: Edwardian Script, large, centered, dark. Sits alone

@@ -56,7 +56,7 @@ export default function IntroMessage() {
       id="intro-mensaje"
       // Steady backdrop, no atmosphere layer here: the user asked for a focused
       // block of color between the hero image and the rest of the invitation.
-      className="relative isolate flex min-h-[32dvh] w-full flex-col items-center justify-center bg-[#3B5B77] px-8 py-14 text-center"
+      className="relative isolate flex min-h-[32dvh] w-full flex-col items-center justify-center bg-[#3B5B77] px-8 py-10 text-center"
     >
       <motion.div
         className="flex w-full max-w-xl flex-col items-center gap-5"

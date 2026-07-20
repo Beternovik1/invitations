@@ -17,7 +17,7 @@ import { getCountdown, pad2, type CountdownParts } from "@/lib/time";
  * the text stays legible over any part of the image.
  *
  * Typographic split per the user's direction:
- *   - "Faltan" and "para mis xv anos" use the Edwardian Script ITC face
+ *   - "Faltan" and "para mis xv años" use the Edwardian Script ITC face
  *     (`--font-edwardian-script`, already mounted in `layout.tsx`).
  *   - The four countdown numerals and labels use Baskervville
  *     (`--font-baskervville`) so they match the intro message section.
@@ -168,7 +168,7 @@ export default function CountdownSection() {
           style={{ ...EDWARDIAN, textShadow: "0 2px 8px rgba(0,0,0,0.55)" }}
           variants={item}
         >
-          para mis xv anos
+          para mis xv años
         </motion.p>
       </motion.div>
     </section>

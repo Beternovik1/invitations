@@ -232,14 +232,14 @@ export default function Itinerary() {
   return (
     <section
       id="itinerario"
-      className="w-full px-6 pb-24 pt-10 sm:pb-32 sm:pt-12"
+      className="w-full px-6 pb-16 pt-10 sm:pb-20 sm:pt-12"
       style={{ backgroundColor: SECTION_BG }}
     >
       {/* Section title — Edwardian Script, large, dark, centered. Same clamp
           as the "Dónde y Cuándo" title so the chapter headings share one
           scale across sections. */}
       <h2
-        className="mx-auto mb-20 text-center text-[clamp(3.25rem,6vw,3.75rem)] leading-none"
+        className="mx-auto mb-14 text-center text-[clamp(3.25rem,6vw,3.75rem)] leading-none"
         style={{ ...EDWARDIAN, color: INK }}
       >
         Itinerario

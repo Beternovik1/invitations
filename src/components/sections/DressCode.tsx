@@ -1,43 +1,42 @@
-import SectionShell from "@/components/ui/SectionShell";
-import { DRESS_CODE } from "@/lib/constants";
+import Image from "next/image";
 
 /**
- * Dress code note with two color swatches.
+ * Dress code section.
  *
- * The swatch hexes come from the DRESS_CODE content (esmeralda + dorado), not
- * from the invitation's own sage/teal theme — the dress code is allowed to
- * name a palette distinct from the page's.
+ * The section mirrors the invitation's current visual language: Edwardian
+ * Script for the chapter title, Baskervville for the short formal note, and a
+ * single centered gold dress-code icon as the only ornament.
  */
 export default function DressCode() {
   return (
-    <SectionShell
+    <section
       id="vestimenta"
-      eyebrow="Código de vestimenta"
-      title={DRESS_CODE.title}
+      className="flex w-full flex-col items-center px-6 py-16 text-center sm:py-20"
+      style={{ backgroundColor: "var(--color-mist-blue)" }}
     >
-      <p
-        className="max-w-lg text-clamp-sub font-serif italic text-[var(--color-ink)]"
-        style={{ fontFamily: "var(--font-serif)" }}
+      <h2
+        className="text-[clamp(3.25rem,6vw,3.75rem)] leading-none text-[#1A1A1A]"
+        style={{ fontFamily: "var(--font-edwardian-script)" }}
       >
-        {DRESS_CODE.note}
+        Código de vestimenta
+      </h2>
+
+      <p
+        className="mt-3 text-[clamp(1.3rem,4.5vw,1.9rem)] text-[#2E3E50]"
+        style={{ fontFamily: "var(--font-baskervville)" }}
+      >
+        Formal
       </p>
 
-      <div className="flex items-center justify-center gap-7">
-        {DRESS_CODE.palette.map((swatch) => (
-          <div key={swatch.name} className="flex flex-col items-center gap-3">
-            <span
-              className="h-16 w-16 rounded-full border border-[var(--color-gold)] shadow-[0_8px_20px_rgba(33,58,50,0.28)]"
-              style={{ background: swatch.hex }}
-            />
-            <span
-              className="font-sans text-xs uppercase tracking-[0.2em] text-[var(--color-ink-dim)]"
-              style={{ fontFamily: "var(--font-sans)" }}
-            >
-              {swatch.name}
-            </span>
-          </div>
-        ))}
-      </div>
-    </SectionShell>
+      <Image
+        src="/photo/iconodresscode.png"
+        alt=""
+        width={180}
+        height={180}
+        className="mt-8 h-auto w-[150px] sm:w-[180px]"
+        sizes="180px"
+        aria-hidden="true"
+      />
+    </section>
   );
 }

@@ -74,6 +74,7 @@ export default function BlessingHosts() {
     <section
       id="bendicion"
       className="relative isolate flex w-full flex-col items-center justify-center px-5 py-16 sm:py-20"
+      style={{ backgroundColor: "var(--color-mist-blue)" }}
     >
       {/* The narrow golden frame — squared corners, thin line, balanced
           padding inside. Max width stays narrow on purpose so the border hugs
@@ -137,7 +138,7 @@ export default function BlessingHosts() {
             style={GOOGLE_SANS}
             variants={item}
           >
-            Martín
+            Martín Ávila Rodríguez
           </motion.p>
         </motion.div>
 
