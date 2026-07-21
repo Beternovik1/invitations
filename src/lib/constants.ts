@@ -41,8 +41,8 @@ export const EVENT = {
 export const ASSETS = {
   bayouBackground: "/bayou-background-placeholder.jpg",
   goldFrame: "/gold-frame-placeholder.png",
-  ogImage: "/photo/sarahi-portrait.png",
-  heroPortrait: "/photo/sarahi-portrait.png",
+  ogImage: "/photo/sarahi-portrait.webp",
+  heroPortrait: "/photo/sarahi-portrait.webp",
 } as const;
 
 /**
@@ -97,7 +97,7 @@ export const LOCATIONS = [
     label: "Ceremonia Religiosa",
     /** Local photograph served from /public/photo — referenced from the
         ceremony card image slot (next/image with object-cover). */
-    image: "/photo/sagrada-familia.png",
+    image: "/photo/sagrada-familia.jpg",
     time: "18:00 hrs",
     venue: "Templo de la Sagrada Familia",
     address: "Blvd. San Roque, Colon, 36597 Irapuato, Gto.",
@@ -107,7 +107,7 @@ export const LOCATIONS = [
     id: "reception",
     kind: "reception",
     label: "Recepción",
-    image: "/photo/alvori.png",
+    image: "/photo/alvori.webp",
     time: "16:00 hrs",
     venue: "Jardín Alvori - Salón De Eventos",
     address: "Arq. Enrique del moral Domínguez, 36826 Irapuato, Gto.",

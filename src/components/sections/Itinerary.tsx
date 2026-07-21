@@ -86,25 +86,25 @@ const EVENTS: readonly ItineraryEvent[] = [
     id: "ceremony",
     time: "14:00 HRS",
     title: "Ceremonia religiosa",
-    icon: "/photo/iconocolordoradoiglesia.png",
+    icon: "/photo/iconocolordoradoiglesia.webp",
   },
   {
     id: "reception",
     time: "16:00 HRS",
     title: "Recepción de invitados",
-    icon: "/photo/iconodoradoprincesa.png",
+    icon: "/photo/iconodoradoprincesa.webp",
   },
   {
     id: "dinner",
     time: "16:30 HRS",
     title: "Comida",
-    icon: "/photo/iconocolordoradoplato.png",
+    icon: "/photo/iconocolordoradoplato.webp",
   },
   {
     id: "waltz",
     time: "17:30 HRS",
     title: "Vals y a fiesta",
-    icon: "/photo/iconocolordoradomusica-300x300.png",
+    icon: "/photo/iconocolordoradomusica-300x300.webp",
   },
 ] as const;
 
