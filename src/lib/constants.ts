@@ -98,7 +98,7 @@ export const LOCATIONS = [
     /** Local photograph served from /public/photo — referenced from the
         ceremony card image slot (next/image with object-cover). */
     image: "/photo/sagrada-familia.jpg",
-    time: "18:00 hrs",
+    time: "14:00 hrs",
     venue: "Templo de la Sagrada Familia",
     address: "Blvd. San Roque, Colon, 36597 Irapuato, Gto.",
     mapsUrl: "https://maps.app.goo.gl/3niJdi4LkH28dbir7",
