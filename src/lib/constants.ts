@@ -52,7 +52,7 @@ export const ASSETS = {
  * final deployment URL before going live.
  */
 export const SITE = {
-  url: "https://invitaciones-sarahi.example",
+  url: "https://invitations-iota-six.vercel.app",
   title: "Sarahí — Mis XV Años",
   description:
     "Acompáñame a celebrar mis XV años. Una noche de cuento entre luces del bayou y música de Nueva Orleans.",
