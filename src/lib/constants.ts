@@ -41,7 +41,7 @@ export const EVENT = {
 export const ASSETS = {
   bayouBackground: "/bayou-background-placeholder.jpg",
   goldFrame: "/gold-frame-placeholder.png",
-  ogImage: "/photo/sarahi-portrait.webp",
+  ogImage: "/og/sarahi-xv-preview.jpg",
   heroPortrait: "/photo/sarahi-portrait.webp",
 } as const;
 
