@@ -22,5 +22,9 @@ test("Envelope addressed text uses stable breakpoint sizes instead of viewport c
     /text-\[clamp\([^\]]+vw/,
     "envelope text must not use viewport-fluid clamp sizing",
   );
-  assert.match(src, /text-\[3\.75rem\]/, "mobile envelope text must have a stable fixed size");
+  assert.match(src, /text-\[3\.75rem\]/, "mobile envelope text must keep the approved stable size");
+  assert.match(src, /sm:text-\[3\.75rem\]/, "tablet envelope text must not grow beyond the mobile-approved size");
+  assert.match(src, /lg:text-\[3\.25rem\]/, "large-screen envelope text must shrink to avoid the open button area");
+  assert.match(src, /xl:text-\[3rem\]/, "extra-large screens must cap addressed text even further");
+  assert.match(src, /top-\[24%\]/, "addressed text must keep the approved envelope position");
 });
