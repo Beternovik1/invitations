@@ -42,7 +42,7 @@ export default function DressCode() {
             than the matching text fade without becoming a flashy effect. */}
         <RevealItem variant="soft-scale" className="mt-8">
           <Image
-            src="/photo/iconodresscode.png"
+            src="/photo/iconodresscode.webp"
             alt=""
             width={180}
             height={180}

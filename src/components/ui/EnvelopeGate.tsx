@@ -130,7 +130,7 @@ export default function EnvelopeGate({ group, children }: EnvelopeGateProps) {
                 transition={{ duration: opening ? 0.45 : 0.3, ease: EASE }}
               >
                 <Image
-                  src="/photo/sobre_navy.png"
+                  src="/photo/sobre_navy.webp"
                   alt="Sobre cerrado de la invitación"
                   fill
                   priority
