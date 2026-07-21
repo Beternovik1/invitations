@@ -148,7 +148,7 @@ export default function EnvelopeGate({ group, children }: EnvelopeGateProps) {
                   transition={{ duration: 0.3, ease: EASE }}
                 >
                   <p
-                    className="mx-auto flex max-w-[18rem] flex-col text-[3.75rem] leading-[0.78] text-white drop-shadow-[0_2px_2px_rgba(33,58,50,0.55)] sm:max-w-[20rem] sm:text-[4.25rem] lg:text-[4.5rem]"
+                    className="mx-auto flex max-w-[18rem] flex-col text-[3.75rem] leading-[0.78] text-white drop-shadow-[0_2px_2px_rgba(33,58,50,0.55)] sm:max-w-[20rem] sm:text-[3.75rem] lg:text-[3.25rem] xl:text-[3rem]"
                     style={{ fontFamily: "var(--font-edwardian-script)" }}
                   >
                     <span>Para:</span>

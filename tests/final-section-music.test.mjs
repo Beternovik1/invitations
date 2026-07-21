@@ -38,6 +38,17 @@ test("FinalThanks uses Edwardian Script text and a drawn heart", async () => {
   assert.match(src, /<svg[\s\S]*<path/, "must draw the heart with SVG");
 });
 
+test("FinalThanks includes a slim dark-blue creator credit bar with GitHub link", async () => {
+  const src = await readSrc(FINAL_THANKS);
+
+  assert.match(src, /Desarrollada por Edgar Alfaro/, "must credit Edgar Alfaro in Spanish");
+  assert.match(src, /https:\/\/github\.com\/Beternovik1/, "must link to the GitHub profile");
+  assert.match(src, /\/github-65x64\.png/, "must render the GitHub logo asset");
+  assert.match(src, /#2E3E50/, "credit bar must use the dark-blue brand color");
+  assert.match(src, /gap-2 px-6 py-3/, "credit bar must stay slim and single-line");
+  assert.doesNotMatch(src, /rounded-full border/, "GitHub logo must not use a gold circular border");
+});
+
 test("Gifts section marks the registry as optional", async () => {
   const src = await readSrc(GIFTS);
 
