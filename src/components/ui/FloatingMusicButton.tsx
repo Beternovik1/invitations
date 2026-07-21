@@ -141,8 +141,8 @@ const FloatingMusicButton = forwardRef<
   if (!enabled) {
     return (
       <div
-        className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1.5 sm:bottom-8 sm:right-8 lg:bottom-10 lg:right-10"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)", paddingRight: "env(safe-area-inset-right)" }}
+        className="pointer-events-none fixed z-[120] flex flex-col items-end gap-1.5"
+        style={MUSIC_BUTTON_POSITION}
       >
         <button
           type="button"
@@ -164,11 +164,11 @@ const FloatingMusicButton = forwardRef<
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1.5 transition-opacity sm:bottom-8 sm:right-8 lg:bottom-10 lg:right-10 ${
+      className={`fixed z-[120] flex flex-col items-end gap-1.5 transition-opacity ${
         hidden ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
       aria-hidden={hidden ? "true" : undefined}
-      style={{ paddingBottom: "env(safe-area-inset-bottom)", paddingRight: "env(safe-area-inset-right)" }}
+      style={MUSIC_BUTTON_POSITION}
     >
       <button
         type="button"
@@ -204,6 +204,11 @@ const FloatingMusicButton = forwardRef<
 FloatingMusicButton.displayName = "FloatingMusicButton";
 
 export default FloatingMusicButton;
+
+const MUSIC_BUTTON_POSITION = {
+  bottom: "max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))",
+  right: "max(1.5rem, calc(env(safe-area-inset-right, 0px) + 1rem))",
+} as const;
 
 /* -------------------------------------------------------------------------- */
 /*  Decorative glyphs                                                         */
