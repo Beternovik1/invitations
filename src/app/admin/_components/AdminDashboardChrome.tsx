@@ -47,7 +47,7 @@ import { logoutAction } from "@/app/admin/_actions/logout";
 
 type IconProps = { className?: string };
 
-function IconRsvp(props: IconProps) {
+function IconChecklist(props: IconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -59,29 +59,12 @@ function IconRsvp(props: IconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-      <line x1="9" y1="4" x2="9" y2="20" />
-    </svg>
-  );
-}
-
-function IconGroups(props: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={props.className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.75}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      <path d="M9 6h11" />
+      <path d="M9 12h11" />
+      <path d="M9 18h11" />
+      <path d="M4 5l1.5 1.5L8 4" />
+      <path d="M4 11l1.5 1.5L8 10" />
+      <path d="M4 17l1.5 1.5L8 16" />
     </svg>
   );
 }
@@ -171,12 +154,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/admin/rsvps", label: "Confirmaciones", icon: IconRsvp },
-  {
-    href: "/admin/guest-groups",
-    label: "Modificar invitados",
-    icon: IconGroups,
-  },
+  { href: "/admin/confirmaciones", label: "Confirmaciones", icon: IconChecklist },
 ];
 
 /** Active when `pathname` is the section root or any nested segment under it. */
@@ -224,7 +202,7 @@ export default function AdminDashboardChrome({
         {/* Brand row */}
         <div className="flex items-center justify-between gap-2 border-b border-(--color-glass-border) px-3 py-4">
           <Link
-            href="/admin/rsvps"
+            href="/admin/confirmaciones"
             onClick={closeMobile}
             className="flex min-w-0 items-center gap-2"
           >

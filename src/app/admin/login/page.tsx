@@ -7,10 +7,11 @@ import LoginForm from "@/app/admin/login/LoginForm";
 /**
  * Admin login route.
  *
- * The single entry point for the read-only `/admin/rsvps` overview. The host
- * enters the shared `ADMIN_ACCESS_KEY` into the form; the `loginAction` Server
- * Action verifies it on the server and, on success, sets a signed httpOnly
- * cookie and redirects to `/admin/rsvps`. The key is never placed in a URL.
+ * The single entry point for the official `/admin/confirmaciones` page. The
+ * host enters the shared `ADMIN_ACCESS_KEY` into the form; the `loginAction`
+ * Server Action verifies it on the server and, on success, sets a signed
+ * httpOnly cookie and redirects to `/admin/confirmaciones`. The key is never
+ * placed in a URL.
  *
  * States:
  *

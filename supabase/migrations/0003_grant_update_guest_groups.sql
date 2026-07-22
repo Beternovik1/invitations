@@ -1,0 +1,22 @@
+-- Grant UPDATE on guest_groups to service_role for admin edits.
+--
+-- Migration 0001 intentionally granted only SELECT on public.guest_groups to
+-- service_role because the first slice only read guest groups. The admin
+-- guest-groups editor (`/admin/guest-groups`) saves edits through the Server
+-- Action in `src/app/admin/(dashboard)/guest-groups/actions.ts`, which calls
+-- `updateGuestGroupForAdmin` -> `updateGuestGroupInSupabase`. Supabase REST/
+-- PostgREST maps that to a PATCH/UPDATE, which requires the UPDATE table
+-- privilege — RLS bypass via the service-role key is NOT the same as a table
+-- permission. Without UPDATE, every admin save returned a 42501/permission
+-- error and the UI surfaced: "Ocurrió un problema al guardar este grupo.
+-- Inténtalo de nuevo en un momento."
+--
+-- This migration does not edit 0001 (already applied in prod). It only widens
+-- the grant to include UPDATE, keeping the same narrow role and table. INSERT
+-- and DELETE are still NOT granted here: admin still creates/disables groups
+-- through SQL/seed tooling in this slice (see 0001 comments).
+--
+-- Apply with the Supabase CLI (`supabase db push`) or by pasting this file
+-- into the Supabase SQL editor. No secrets are required to run this migration.
+
+grant update on table public.guest_groups to service_role;

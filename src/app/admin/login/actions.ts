@@ -19,9 +19,9 @@ export interface LoginState {
  *
  * Bound to a client form via `useActionState` and called as
  * `(prevState, formData)`. On a correct key it sets the httpOnly session cookie
- * (see `signInAdmin`) and redirects to `/admin/rsvps`; on a wrong or missing
- * key it returns a state with an `error` so the form stays usable and shows the
- * failure inline.
+ * (see `signInAdmin`) and redirects to `/admin/confirmaciones`; on a wrong or
+ * missing key it returns a state with an `error` so the form stays usable and
+ * shows the failure inline.
  *
  * If `ADMIN_ACCESS_KEY` is not configured the login page itself renders a
  * setup-required screen instead of the form, so a direct POST to this action in
@@ -48,5 +48,5 @@ export async function loginAction(
     return { error: "Clave de acceso incorrecta." };
   }
 
-  redirect("/admin/rsvps");
+  redirect("/admin/confirmaciones");
 }

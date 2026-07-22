@@ -1,0 +1,27 @@
+-- Grant INSERT on guest_groups to service_role for admin creates.
+--
+-- Migration 0001 intentionally granted only SELECT on public.guest_groups to
+-- service_role (the first slice only read guest groups), and migration 0003
+-- widened that to SELECT + UPDATE for the `/admin/guest-groups` inline
+-- editor. The new `Nueva invitación` slice in `/admin/confirmaciones` lets the
+-- host CREATE a new family invitation (or REACTIVATE an inactive one with the
+-- same slug), and the create path goes through the Server Action in
+-- `src/app/admin/(dashboard)/guest-groups/actions.ts` ->
+-- `createOrReactivateGuestGroupForAdmin` -> `insertGuestGroupInSupabase`.
+-- Supabase REST/PostgREST maps that to a POST/INSERT, which requires the INSERT
+-- table privilege — RLS bypass via the service-role key is NOT the same as a
+-- table permission. Without INSERT, every admin create returned a 42501/
+-- permission error.
+--
+-- This migration does not edit 0001 or 0003 (both already applied in prod). It
+-- only adds INSERT, keeping the same narrow role and table. DELETE is still
+-- NOT granted here: the `Eliminar` flow is deferred to a later slice, so
+-- soft-delete remains an UPDATE of `is_active` (already granted by 0003) and
+-- hard deletes stay in SQL/admin tooling.
+--
+-- IMPORTANT: this migration must be applied in the production Supabase project
+-- (SQL editor or `supabase db push`) BEFORE deploying the `Nueva invitación`
+-- feature, otherwise creating a group will fail with a permission error. No
+-- secrets are required to run this migration.
+
+grant insert on table public.guest_groups to service_role;
