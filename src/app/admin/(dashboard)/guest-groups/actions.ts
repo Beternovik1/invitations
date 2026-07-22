@@ -95,7 +95,14 @@ export async function updateGuestGroupAction(
       // Refresh the page's data cache so the list reflects the persisted
       // values immediately on the next render (isActive toggling, seat count,
       // note, etc.).
+      //
+      // The unified `/admin/confirmaciones` page reuses this same action for
+      // its inline `Modificar` panel, so it must be revalidated too — otherwise
+      // a save from the confirmaciones card would leave that page showing stale
+      // seat counts / status badges until a manual reload. Both paths are cheap
+      // to revalidate and the action is the single shared mutation surface.
       revalidatePath("/admin/guest-groups");
+      revalidatePath("/admin/confirmaciones");
       return { status: "success", slug };
     }
     return { status: "error", slug, error: result.error };

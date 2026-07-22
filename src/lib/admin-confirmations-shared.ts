@@ -1,0 +1,246 @@
+/**
+ * Runtime-safe shared types and helpers for the unified Confirmaciones admin
+ * page (`/admin/confirmaciones`).
+ *
+ * This module MUST stay free of any server-only or Supabase imports —
+ * including a dynamic import of the Supabase server client. The client view
+ * (`ConfirmationsView.tsx`) imports runtime values from here (status labels,
+ * the match/sort helpers), so pulling the server boundary graph would drag
+ * `server-only` into the client bundle and break the build. This mirrors the
+ * `rsvps-shared.ts` / `admin-guest-groups-shared.ts` convention.
+ *
+ * The page reuses the admin-overview data boundary (`getActiveGuestGroupsWithRsvp`),
+ * which already returns `AdminGuestGroup` (active group + joined RSVP). This
+ * module owns only the status MODEL the new page needs — which is finer-grained
+ * than the existing read-only `RsvpStatus`:
+ *
+ *   - `sin_lugares`    -> assignedSeats == null (cannot RSVP yet)
+ *   - `sin_respuesta`  -> assignedSeats != null and rsvp == null
+ *   - `confirmado`     -> rsvp != null and attendingCount > 0
+ *   - `sin_asistencia` -> rsvp != null and attendingCount === 0
+ *
+ * The existing `/admin/rsvps` overview collapses the last two into "Confirmado"
+ * (any RSVP row counts as confirmed); the new page the host asked for splits
+ * "confirmed attending" from "confirmed not attending", so the new helper lives
+ * here instead of mutating `rsvpStatusFor` (the old page's contract is pinned
+ * by its source-contract tests).
+ */
+
+import type { AdminGuestGroup } from "@/lib/admin-overview";
+
+/** Four-state confirmation model for the unified Confirmaciones page. */
+export type ConfirmationStatus =
+  | "sin_lugares"
+  | "sin_respuesta"
+  | "confirmado"
+  | "sin_asistencia";
+
+/** Spanish UI labels, indexed by status. Kept here so the page and any future
+ *  summary helpers share one definition of "what does this card say?". */
+export const CONFIRMATION_STATUS_LABELS: Record<ConfirmationStatus, string> = {
+  sin_lugares: "Sin lugares",
+  sin_respuesta: "Sin respuesta",
+  confirmado: "Confirmado",
+  sin_asistencia: "Sin asistencia",
+};
+
+/** Tailwind tone classes per status, mirroring the existing RSVP overview's
+ *  tone model so the new page reads as the same product. */
+export const CONFIRMATION_STATUS_TONE: Record<ConfirmationStatus, string> = {
+  sin_lugares:
+    "bg-(--color-glass) text-(--color-ink-dim) border-(--color-glass-border)",
+  sin_respuesta:
+    "bg-(--color-pale-yellow-green)/40 text-(--color-ink-dim) border-(--color-gold)/35",
+  confirmado:
+    "bg-(--color-sage)/40 text-(--color-ink) border-(--color-dusty-teal)/40",
+  sin_asistencia:
+    "bg-(--color-mist-blue-deep)/60 text-(--color-ink-dim) border-(--color-dusty-blue)/40",
+};
+
+/** Compute the four-state confirmation status for a group. Kept here (not on
+ *  the data boundary) so the client view can call it from a pure function the
+ *  source-contract test can import without crossing the server boundary. */
+export function confirmationStatusFor(
+  group: Pick<AdminGuestGroup, "assignedSeats" | "rsvp">
+): ConfirmationStatus {
+  if (group.assignedSeats == null) return "sin_lugares";
+  if (!group.rsvp) return "sin_respuesta";
+  return group.rsvp.attendingCount > 0 ? "confirmado" : "sin_asistencia";
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Search                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Normalize text for accent-insensitive, case-insensitive contains matching.
+ *
+ * Strips combining marks via NFD decomposition + the Unicode `Diacritics`
+ * property, then lowercases. "Jiménez" -> "jimenez", "Ávila" -> "avila", so a
+ * host typing "jimenez" with no accents still finds the accented group.
+ *
+ * Uses `\p{Diacritics}` (Unicode property escape) which Node 16+ supports in
+ * regex literals when the `u` flag is set. Kept pure and dependency-free so the
+ * source-contract test can import and exercise it directly.
+ */
+export function normalizeForSearch(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+/** True when `query` (normalized) is contained in any normalized target. */
+export function matchesQuery(
+  query: string,
+  targets: ReadonlyArray<string>
+): boolean {
+  const needle = normalizeForSearch(query.trim());
+  if (needle.length === 0) return true;
+  return targets.some(
+    (target) => normalizeForSearch(target).includes(needle)
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Sorting                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/** Sort keys surfaced to the host. The vague "Estado" sort was removed from
+ *  the visible dropdown because it never explained *which* status order the
+ *  rows followed; an explicit status filter (`CONFIRMATION_FILTER_OPTIONS`)
+ *  replaces it. The `estado` branch of `sortConfirmations` is kept as a pure
+ *  internal helper (and stays pinned by its source-contract test) so callers
+ *  that want status rank ordering can still reach it. */
+export type ConfirmationSortKey = "estado" | "az" | "mas-lugares";
+
+export const CONFIRMATION_SORT_OPTIONS: ReadonlyArray<{
+  value: ConfirmationSortKey;
+  label: string;
+}> = [
+  { value: "az", label: "A-Z" },
+  { value: "mas-lugares", label: "Más lugares" },
+];
+
+/* -------------------------------------------------------------------------- */
+/*  Status filter                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Status filter keys surfaced to the host. This is the explicit replacement
+ * for the old vague "Ordenar por: Estado" dropdown: instead of a silent
+ * sort order that did not name the states, the host now picks a state
+ * directly and the list filters down to it.
+ *
+ * `enviada` is session-only — there is no `sent`/`sent_at` column, so the
+ * filter resolves against the per-session `sentSlugs` set the view owns. The
+ * remaining five values map 1:1 to `ConfirmationStatus` (`confirmada` is the
+ * feminine card label, the underlying data status is `confirmado`).
+ */
+export type ConfirmationFilterKey =
+  | "todos"
+  | "sin_lugares"
+  | "sin_respuesta"
+  | "enviada"
+  | "confirmada"
+  | "sin_asistencia";
+
+export const CONFIRMATION_FILTER_OPTIONS: ReadonlyArray<{
+  value: ConfirmationFilterKey;
+  label: string;
+}> = [
+  { value: "todos", label: "Todos" },
+  { value: "sin_lugares", label: "Sin lugares" },
+  { value: "sin_respuesta", label: "Sin respuesta" },
+  { value: "enviada", label: "Enviada" },
+  { value: "confirmada", label: "Confirmada" },
+  { value: "sin_asistencia", label: "Sin asistencia" },
+];
+
+/** Maps the feminine UI filter labels to the underlying confirmation status
+ *  codes so the filter helper can reuse `confirmationStatusFor`. `enviada`
+ *  and `todos` are handled separately (session-local vs pass-through). */
+const FILTER_TO_STATUS: Partial<
+  Record<ConfirmationFilterKey, ConfirmationStatus>
+> = {
+  sin_lugares: "sin_lugares",
+  sin_respuesta: "sin_respuesta",
+  confirmada: "confirmado",
+  sin_asistencia: "sin_asistencia",
+};
+
+/**
+ * Filter groups by the host's chosen status view. Pure so the source-contract
+ * test can import and exercise it directly.
+ *
+ * `enviada` matches the per-session `sentSlugs` set (NOT persisted — the
+ * schema has no sent column), so a host who marked a group as sent sees it
+ * under the "Enviada" filter until reload. All other filters resolve against
+ * the persisted `(assignedSeats, rsvp)` pair via `confirmationStatusFor`.
+ */
+export function filterConfirmations(
+  groups: ReadonlyArray<AdminGuestGroup>,
+  filter: ConfirmationFilterKey,
+  sentSlugs: ReadonlySet<string>
+): AdminGuestGroup[] {
+  if (filter === "todos") return [...groups];
+  if (filter === "enviada") {
+    return groups.filter((group) => sentSlugs.has(group.slug));
+  }
+  const targetStatus = FILTER_TO_STATUS[filter];
+  if (!targetStatus) return [...groups];
+  return groups.filter(
+    (group) => confirmationStatusFor(group) === targetStatus
+  );
+}
+
+/** Stable rank for status, used by the "Estado" sort so the host sees the
+ *  most actionable rows (Sin lugares, Sin respuesta) first. Lower = first. */
+const STATUS_SORT_RANK: Record<ConfirmationStatus, number> = {
+  sin_lugares: 0,
+  sin_respuesta: 1,
+  sin_asistencia: 2,
+  confirmado: 3,
+};
+
+/** Sort a copy of the groups by the chosen key. Returns a new array; does not
+ *  mutate the input. Pure so the test can import and exercise it directly. */
+export function sortConfirmations(
+  groups: ReadonlyArray<AdminGuestGroup>,
+  key: ConfirmationSortKey
+): AdminGuestGroup[] {
+  const copy = [...groups];
+  switch (key) {
+    case "az":
+      copy.sort((a, b) =>
+        a.displayName.localeCompare(b.displayName, "es", {
+          sensitivity: "base",
+        })
+      );
+      break;
+    case "mas-lugares":
+      // Descending by assigned seats; pending (null) sorts last. Tiebreak by
+      // display name so equal-seat groups stay in a stable order.
+      copy.sort((a, b) => {
+        const aSeats = a.assignedSeats ?? -1;
+        const bSeats = b.assignedSeats ?? -1;
+        if (aSeats !== bSeats) return bSeats - aSeats;
+        return a.displayName.localeCompare(b.displayName, "es", {
+          sensitivity: "base",
+        });
+      });
+      break;
+    case "estado":
+    default:
+      copy.sort((a, b) => {
+        const aRank = STATUS_SORT_RANK[confirmationStatusFor(a)];
+        const bRank = STATUS_SORT_RANK[confirmationStatusFor(b)];
+        if (aRank !== bRank) return aRank - bRank;
+        return a.displayName.localeCompare(b.displayName, "es", {
+          sensitivity: "base",
+        });
+      });
+      break;
+  }
+  return copy;
+}
