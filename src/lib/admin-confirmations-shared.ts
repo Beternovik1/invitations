@@ -28,44 +28,84 @@
 
 import type { AdminGuestGroup } from "@/lib/admin-overview";
 
-/** Four-state confirmation model for the unified Confirmaciones page. */
+/** Five-state confirmation model for the unified Confirmaciones page.
+ *
+ *  Status priority (highest first):
+ *    1. `sin_lugares`     — `assignedSeats == null`: the row cannot RSVP yet,
+ *                            so this dominates everything else (a host cannot
+ *                            mark "Enviada" without seats anyway — the toggle
+ *                            is disabled on this card).
+ *    2. `confirmado`       — `rsvp != null && attendingCount > 0`: the family
+ *                            has ANSWERED, so a final state wins over the
+ *                            host's internal "I sent it" marker.
+ *    3. `sin_asistencia`   — `rsvp != null && attendingCount === 0`: same as
+ *                            above, a final declining answer wins over `Sent`.
+ *    4. `enviada`          — `sentAt != null && rsvp == null`: the host has
+ *                            recorded that the link was sent, but the family
+ *                            has not answered yet. This is the intermediate
+ *                            "I've done my part, now I wait" state.
+ *    5. `sin_respuesta`    — `sentAt == null && rsvp == null`: actionable
+ *                            default — seats assigned, no answer, not marked
+ *                            sent. The host sees this row as the next one to
+ *                            act on.
+ *
+ *  An RSVP answer is a terminal state and intentionally ranks above
+ *  `enviada`: once the family replies, the host no longer cares whether they
+ *  had logged "I shared the link"; the answer is the fact that matters now.
+ *  The user-approved priority is pinned by the source-contract test in
+ *  `tests/admin-confirmations-sent.test.mjs`.
+ */
 export type ConfirmationStatus =
   | "sin_lugares"
-  | "sin_respuesta"
   | "confirmado"
-  | "sin_asistencia";
+  | "sin_asistencia"
+  | "enviada"
+  | "sin_respuesta";
 
 /** Spanish UI labels, indexed by status. Kept here so the page and any future
  *  summary helpers share one definition of "what does this card say?". */
 export const CONFIRMATION_STATUS_LABELS: Record<ConfirmationStatus, string> = {
   sin_lugares: "Sin lugares",
   sin_respuesta: "Sin respuesta",
+  enviada: "Enviada",
   confirmado: "Confirmado",
   sin_asistencia: "Sin asistencia",
 };
 
 /** Tailwind tone classes per status, mirroring the existing RSVP overview's
- *  tone model so the new page reads as the same product. */
+ *  tone model so the new page reads as the same product. `enviada` reuses the
+ *  sage accent the create flow uses, so the host's "I already acted" rows read
+ *  as the same calm brand surface the `Guardar`/`Crear` feedback uses. */
 export const CONFIRMATION_STATUS_TONE: Record<ConfirmationStatus, string> = {
   sin_lugares:
     "bg-(--color-glass) text-(--color-ink-dim) border-(--color-glass-border)",
   sin_respuesta:
     "bg-(--color-pale-yellow-green)/40 text-(--color-ink-dim) border-(--color-gold)/35",
+  enviada:
+    "bg-(--color-sage)/35 text-(--color-ink) border-(--color-dusty-teal)/35",
   confirmado:
     "bg-(--color-sage)/40 text-(--color-ink) border-(--color-dusty-teal)/40",
   sin_asistencia:
     "bg-(--color-mist-blue-deep)/60 text-(--color-ink-dim) border-(--color-dusty-blue)/40",
 };
 
-/** Compute the four-state confirmation status for a group. Kept here (not on
+/** Compute the five-state confirmation status for a group. Kept here (not on
  *  the data boundary) so the client view can call it from a pure function the
- *  source-contract test can import without crossing the server boundary. */
+ *  source-contract test can import without crossing the server boundary.
+ *
+ *  See `ConfirmationStatus` for the documented priority. */
 export function confirmationStatusFor(
-  group: Pick<AdminGuestGroup, "assignedSeats" | "rsvp">
+  group: Pick<AdminGuestGroup, "assignedSeats" | "rsvp" | "sentAt">
 ): ConfirmationStatus {
   if (group.assignedSeats == null) return "sin_lugares";
-  if (!group.rsvp) return "sin_respuesta";
-  return group.rsvp.attendingCount > 0 ? "confirmado" : "sin_asistencia";
+  if (group.rsvp) {
+    return group.rsvp.attendingCount > 0 ? "confirmado" : "sin_asistencia";
+  }
+  // No RSVP yet: `enviada` if the host marked the link as sent, otherwise the
+  // actionable default `sin_respuesta`. Mock mode never populates `sentAt`,
+  // so an un-marked row resolves to `sin_respuesta` and the toggle's `unavailable`
+  // boundary refuses to fabricate a sent state (see `setGuestGroupSentAtForAdmin`).
+  return group.sentAt != null ? "enviada" : "sin_respuesta";
 }
 
 /* -------------------------------------------------------------------------- */
@@ -132,10 +172,11 @@ export const CONFIRMATION_SORT_OPTIONS: ReadonlyArray<{
  * sort order that did not name the states, the host now picks a state
  * directly and the list filters down to it.
  *
- * `enviada` is session-only — there is no `sent`/`sent_at` column, so the
- * filter resolves against the per-session `sentSlugs` set the view owns. The
- * remaining five values map 1:1 to `ConfirmationStatus` (`confirmada` is the
- * feminine card label, the underlying data status is `confirmado`).
+ * Every state (including `enviada`) now maps 1:1 to the persisted
+ * `ConfirmationStatus` and resolves against the server-loaded `sentAt`
+ * field — the toggle is persisted via migration 0005, so the filter no
+ * longer reads session-only state. `confirmada` is the feminine card label
+ * for the underlying `confirmado` status.
  */
 export type ConfirmationFilterKey =
   | "todos"
@@ -158,13 +199,14 @@ export const CONFIRMATION_FILTER_OPTIONS: ReadonlyArray<{
 ];
 
 /** Maps the feminine UI filter labels to the underlying confirmation status
- *  codes so the filter helper can reuse `confirmationStatusFor`. `enviada`
- *  and `todos` are handled separately (session-local vs pass-through). */
+ *  codes so the filter helper can reuse `confirmationStatusFor`. `todos` is
+ *  the only pass-through (handled before this map is consulted). */
 const FILTER_TO_STATUS: Partial<
   Record<ConfirmationFilterKey, ConfirmationStatus>
 > = {
   sin_lugares: "sin_lugares",
   sin_respuesta: "sin_respuesta",
+  enviada: "enviada",
   confirmada: "confirmado",
   sin_asistencia: "sin_asistencia",
 };
@@ -173,20 +215,16 @@ const FILTER_TO_STATUS: Partial<
  * Filter groups by the host's chosen status view. Pure so the source-contract
  * test can import and exercise it directly.
  *
- * `enviada` matches the per-session `sentSlugs` set (NOT persisted — the
- * schema has no sent column), so a host who marked a group as sent sees it
- * under the "Enviada" filter until reload. All other filters resolve against
- * the persisted `(assignedSeats, rsvp)` pair via `confirmationStatusFor`.
+ * Every state (including `enviada`) resolves against the persisted row via
+ * `confirmationStatusFor(group)`. The `sentAt` column was added by migration
+ * 0005 and is written by `toggleGuestGroupSentAction`, so the `Enviada`
+ * filter survives reload and is consistent across devices.
  */
 export function filterConfirmations(
   groups: ReadonlyArray<AdminGuestGroup>,
-  filter: ConfirmationFilterKey,
-  sentSlugs: ReadonlySet<string>
+  filter: ConfirmationFilterKey
 ): AdminGuestGroup[] {
   if (filter === "todos") return [...groups];
-  if (filter === "enviada") {
-    return groups.filter((group) => sentSlugs.has(group.slug));
-  }
   const targetStatus = FILTER_TO_STATUS[filter];
   if (!targetStatus) return [...groups];
   return groups.filter(
@@ -195,12 +233,16 @@ export function filterConfirmations(
 }
 
 /** Stable rank for status, used by the "Estado" sort so the host sees the
- *  most actionable rows (Sin lugares, Sin respuesta) first. Lower = first. */
+ *  most actionable rows (Sin lugares, Sin respuesta) first. `enviada` sits
+ *  between "not yet answered" and the final answered states so the sort keeps
+ *  the host's actionable order without burying the eventual answers. Lower =
+ *  first. */
 const STATUS_SORT_RANK: Record<ConfirmationStatus, number> = {
   sin_lugares: 0,
   sin_respuesta: 1,
-  sin_asistencia: 2,
-  confirmado: 3,
+  enviada: 2,
+  sin_asistencia: 3,
+  confirmado: 4,
 };
 
 /** Sort a copy of the groups by the chosen key. Returns a new array; does not

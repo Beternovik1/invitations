@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useId, useMemo, useState } from "react";
+import { useActionState, useId, useMemo, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
   createGuestGroupAction,
   deleteGuestGroupAction,
+  toggleGuestGroupSentAction,
   updateGuestGroupAction,
 } from "@/app/admin/(dashboard)/guest-groups/actions";
 import {
@@ -49,13 +50,10 @@ import type { AdminGuestGroup } from "@/lib/admin-overview";
  * logic is duplicated in the browser and no service-role key is ever shipped to
  * the client.
  *
- * "Enviada" toggle: there is NO `sent`/`sent_at` column on `guest_groups` or
- * `rsvps` in the current schema (see `supabase/migrations/`), so this slice
- * does NOT persist the toggle. Per the host's instruction, we keep the UI
- * placeholder honest: the toggle is per-session local state with a clear
- * helper line ("solo en esta sesión") and the action item for persistence (a
- * migration adding a `sent_at`/`sent` column) is reported back, not silently
- * invented.
+ * "Enviada" toggle: persisted by migration 0005 via `guest_groups.sent_at`.
+ * The switch calls a Server Action that re-verifies admin auth and PATCHes only
+ * `sent_at`; the summary, filter, and status badge all read the server-loaded
+ * value so the state survives reloads/devices.
  *
  * "Modificar": this slice adds UPDATE editing of `displayName` and
  * `assignedSeats` per card, plus an inline `Eliminar` control at the bottom
@@ -103,10 +101,6 @@ export default function ConfirmationsView({
   const [sortKey, setSortKey] = useState<ConfirmationSortKey>("az");
   const [filterKey, setFilterKey] = useState<ConfirmationFilterKey>("todos");
 
-  // Per-session only. NOT persisted: reset on reload and invisible to other
-  // devices. See the helper copy on each card.
-  const [sentSlugs, setSentSlugs] = useState<Set<string>>(new Set());
-
   // `Nueva invitación` panel. Only one is open at a time. `null` means the
   // panel is closed; a number is a mount nonce so each open starts a fresh
   // `useActionState` instance (inside `NewInvitationPanel`) instead of
@@ -116,7 +110,7 @@ export default function ConfirmationsView({
   const [createOpenNonce, setCreateOpenNonce] = useState<number | null>(null);
 
   const visible = useMemo(() => {
-    const byStatus = filterConfirmations(groups, filterKey, sentSlugs);
+    const byStatus = filterConfirmations(groups, filterKey);
     const trimmed = query.trim();
     const searched =
       trimmed.length === 0
@@ -125,13 +119,10 @@ export default function ConfirmationsView({
             matchesQuery(query, [group.displayName, group.slug])
           );
     return sortConfirmations(searched, sortKey);
-  }, [groups, query, sortKey, filterKey, sentSlugs]);
+  }, [groups, query, sortKey, filterKey]);
 
   const summary = useMemo(() => computeSummary(groups), [groups]);
-  // `Enviados` is the only insight that is NOT backed by the read-only data
-  // boundary: the schema has no `sent` column, so this number is whatever the
-  // host marked as sent *in this tab*. The card says so explicitly.
-  const enviadosCount = sentSlugs.size;
+  const enviadosCount = summary.groupsEnviados;
   const selectedFilterLabel =
     CONFIRMATION_FILTER_OPTIONS.find((option) => option.value === filterKey)
       ?.label ?? "Todos";
@@ -150,8 +141,8 @@ export default function ConfirmationsView({
           is the headline number (how many active invitation/group cards the
           data boundary returns), shown as a bigger first card above the six
           supporting metrics so the host sees the size of the list at a glance.
-          All but `Enviados` come from the read-only data boundary; the
-          session-local count is shown honestly with its helper copy. */}
+          All metrics come from the server-loaded data boundary, including
+          persisted `sent_at` for `Invitaciones enviadas`. */}
       <HeroSummaryCard
         label="Invitaciones totales"
         value={summary.totalGroups}
@@ -176,7 +167,6 @@ export default function ConfirmationsView({
         <SummaryCard
           label="Invitaciones enviadas"
           value={enviadosCount}
-          hint="solo en esta sesión"
         />
         <SummaryCard
           label="Invitaciones sin lugares asignados"
@@ -281,15 +271,6 @@ export default function ConfirmationsView({
             <li key={group.slug}>
               <ConfirmationCard
                 group={group}
-                sent={sentSlugs.has(group.slug)}
-                onToggleSent={() =>
-                  setSentSlugs((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(group.slug)) next.delete(group.slug);
-                    else next.add(group.slug);
-                    return next;
-                  })
-                }
                 isEditing={editingSlug === group.slug}
                 onToggleEdit={(next) =>
                   setEditingSlug(next ? group.slug : null)
@@ -314,6 +295,7 @@ interface ConfirmationsSummary {
   totalAssignedSeats: number;
   totalConfirmedAttending: number;
   groupsConfirmados: number;
+  groupsEnviados: number;
   groupsSinRespuesta: number;
   groupsSinLugares: number;
 }
@@ -323,6 +305,7 @@ function computeSummary(groups: AdminGuestGroup[]): ConfirmationsSummary {
   let totalAssignedSeats = 0;
   let totalConfirmedAttending = 0;
   let groupsConfirmados = 0;
+  let groupsEnviados = 0;
   let groupsSinRespuesta = 0;
   let groupsSinLugares = 0;
 
@@ -338,6 +321,8 @@ function computeSummary(groups: AdminGuestGroup[]): ConfirmationsSummary {
     if (status === "confirmado") {
       groupsConfirmados += 1;
       totalConfirmedAttending += group.rsvp?.attendingCount ?? 0;
+    } else if (status === "enviada") {
+      groupsEnviados += 1;
     } else if (status === "sin_respuesta") {
       groupsSinRespuesta += 1;
     }
@@ -351,6 +336,7 @@ function computeSummary(groups: AdminGuestGroup[]): ConfirmationsSummary {
     totalAssignedSeats,
     totalConfirmedAttending,
     groupsConfirmados,
+    groupsEnviados,
     groupsSinRespuesta,
     groupsSinLugares,
   };
@@ -414,16 +400,12 @@ function HeroSummaryCard({
 
 function ConfirmationCard({
   group,
-  sent,
-  onToggleSent,
   isEditing,
   onToggleEdit,
   formState,
   formAction,
 }: {
   group: AdminGuestGroup;
-  sent: boolean;
-  onToggleSent: () => void;
   isEditing: boolean;
   onToggleEdit: (next: boolean) => void;
   formState: GuestGroupFormState;
@@ -431,6 +413,7 @@ function ConfirmationCard({
 }) {
   const status = confirmationStatusFor(group);
   const hasAssignedSeats = group.assignedSeats != null;
+  const sent = group.sentAt != null;
   const invitationPath = `/i/${group.slug}`;
   const confirmedLabel = hasAssignedSeats
     ? `${group.rsvp?.attendingCount ?? 0} de ${group.assignedSeats}`
@@ -472,10 +455,9 @@ function ConfirmationCard({
       </dl>
 
       {/* Copy + Enviada + Modificar actions. The copy button is the host's
-          whole point here; the sent-state toggle is a placeholder until a
-          migration adds the column; `Modificar` opens the inline edit panel
-          below for this card only. All three are kept in the same row on
-          phones. */}
+          whole point here; the sent-state toggle persists `sent_at` through a
+          Server Action; `Modificar` opens the inline edit panel below for this
+          card only. All three are kept in the same row on phones. */}
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-(--color-glass-border) pt-4">
         <CopyLinkButton path={invitationPath} disabled={!hasAssignedSeats} />
 
@@ -490,9 +472,9 @@ function ConfirmationCard({
         </button>
 
         <SentToggle
+          slug={group.slug}
           sent={sent}
           disabled={!hasAssignedSeats}
-          onToggle={onToggleSent}
         />
       </div>
 
@@ -502,8 +484,7 @@ function ConfirmationCard({
         </p>
       ) : (
         <p className="mt-2 text-xs text-(--color-ink-soft)">
-          El estado &ldquo;Enviada&rdquo; es solo visible en esta sesión.
-          Para guardarlo se necesita una migración de base de datos.
+          Marca &ldquo;Enviada&rdquo; cuando ya mandaste el enlace por WhatsApp.
         </p>
       )}
 
@@ -797,31 +778,45 @@ function CopyLinkButton({
 /*  Sent toggle (iPhone-style switch)                                          */
 /* -------------------------------------------------------------------------- */
 
-/* Manual "Enviada" per-card toggle. Non-persistent: the schema has no
-   `sent`/`sent_at` column, so flipping it only updates the per-session
-   `sentSlugs` state the parent owns. The accessible label stays Spanish
-   ("Enviada") and the switch exposes `role="switch"` / `aria-checked` to
-   assistive tech. The visual is an iPhone-like track with a circular knob:
+/* Manual "Enviada" per-card toggle. Persisted via `toggleGuestGroupSentAction`,
+   which writes `guest_groups.sent_at` server-side. The accessible label stays
+   Spanish ("Enviada") and the switch exposes `role="switch"` / `aria-checked`
+   to assistive tech. The visual is an iPhone-like track with a circular knob:
    off = light/neutral track, on = green track; the knob always slides. */
 function SentToggle({
+  slug,
   sent,
   disabled,
-  onToggle,
 }: {
+  slug: string;
   sent: boolean;
   disabled: boolean;
-  onToggle: () => void;
 }) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const toggle = () => {
+    if (disabled || isPending) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await toggleGuestGroupSentAction(slug, !sent);
+      if (!result.ok) {
+        setError(result.error.message);
+      }
+    });
+  };
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2">
       <button
         type="button"
         role="switch"
         aria-checked={sent}
         aria-label="Enviada"
-        onClick={onToggle}
-        disabled={disabled}
-        aria-disabled={disabled || undefined}
+        onClick={toggle}
+        disabled={disabled || isPending}
+        aria-disabled={disabled || isPending || undefined}
         className={
           "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-gold)/60 disabled:cursor-not-allowed disabled:opacity-50 " +
           (sent
@@ -838,6 +833,8 @@ function SentToggle({
         />
       </button>
       <span className="text-sm text-(--color-ink-dim)">Enviada</span>
+      </div>
+      {error ? <span className="text-xs text-red-700">{error}</span> : null}
     </div>
   );
 }

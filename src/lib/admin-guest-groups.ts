@@ -51,6 +51,8 @@ import {
   type AdminGuestGroupError,
   type AdminGuestGroupErrorCode,
   type AdminGuestGroupInput,
+  type AdminGuestGroupToggleSentResult,
+  type GuestGroupToggleSentActionResult,
   type GuestGroupCreateFormState,
   type GuestGroupDeleteFormState,
   type GuestGroupFormState,
@@ -71,6 +73,8 @@ export {
   type AdminGuestGroupError,
   type AdminGuestGroupErrorCode,
   type AdminGuestGroupInput,
+  type AdminGuestGroupToggleSentResult,
+  type GuestGroupToggleSentActionResult,
   type GuestGroupCreateFormState,
   type GuestGroupDeleteFormState,
   type GuestGroupFormState,
@@ -437,6 +441,80 @@ export async function deleteGuestGroupForAdmin(
     );
     const deleted = await softDeleteGuestGroupInSupabase(trimmedSlug);
     if (!deleted) {
+      return { ok: false, error: error("group_not_found") };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, error: error("unexpected") };
+  }
+}
+
+/**
+ * Persist the host's "Enviada" toggle for a guest group.
+ *
+ * Backs the `toggleGuestGroupSentAction` Server Action invoked from the
+ * iPhone-style `Enviada` switch on each `/admin/confirmaciones` card. The
+ * toggle replaces the session-only `sentSlugs` set the previous slice used as
+ * a placeholder, now that migration 0005 adds the backing `sent_at` column.
+ *
+ *   - `sent === true`  -> PATCH `sent_at = <server-generated UTC ISO>`. The
+ *     timestamp is computed HERE (the server boundary owns "now") so a tampered
+ *     client cannot pick it, and so all clients share one host's notion of the
+ *     moment the link was sent. We use `new Date().toISOString()` (stable, UTC,
+ *     ISO 8601) rather than `now()` on Postgres to keep the timestamp value
+ *     visible to the boundary for logs/tests without a second read.
+ *   - `sent === false` -> PATCH `sent_at = null` to clear the marker.
+ *
+ * The boundary reuses the dedicated `setGuestGroupSentAtInSupabase` helper
+ * (NOT the full-row `updateGuestGroupInSupabase`) so this PATCH never mutates
+ * `display_name` / `assigned_seats` / `seats_note` / `is_active`. The existing
+ * UPDATE grant from migration 0003 covers a PATCH of `sent_at`, so no new
+ * grant is required; migration 0005 only DDLs the column.
+ *
+ * Validation order (fail fast):
+ *   - empty slug            -> `group_not_found` (defensive; the action also
+ *     guards and the toggle UI never sends an empty slug, but the boundary
+ *     stays honest if called directly).
+ *   - mock mode (no
+ *     SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY) -> `unavailable`. The zero-config
+ *     build refuses to fabricate a sent state, exactly like the update/create/
+ *     delete boundaries refuse mock mutations.
+ *   - no row matched the slug (deleted out-of-band between page load and tap)
+ *     -> `group_not_found`.
+ *
+ * Never throws for expected failures — returns a structured
+ * `{ ok: false, error }` so the Server Action can surface them inline on the
+ * card. Only truly unexpected transport failures throw, and the Server Action
+ * converts those into `unexpected`. The returned shape is
+ * `AdminGuestGroupToggleSentResult` (success carries no payload): on success
+ * `revalidatePath` refreshes the card from persisted data, so the boundary
+ * does not need to echo the row back.
+ */
+export async function setGuestGroupSentAtForAdmin(
+  slug: string,
+  sent: boolean
+): Promise<AdminGuestGroupToggleSentResult> {
+  const trimmedSlug = slug.trim();
+  if (trimmedSlug.length === 0) {
+    return { ok: false, error: error("group_not_found") };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { ok: false, error: error("unavailable") };
+  }
+
+  // Compute the timestamp on the server so all clients agree and a tampered
+  // client cannot pick it. `toISOString()` is stable, UTC, ISO 8601 — the same
+  // form PostgREST sends back on read. Clearing (`sent === false`) sends
+  // `null` so the column returns to its "not sent yet" default.
+  const sentAt = sent ? new Date().toISOString() : null;
+
+  try {
+    const { setGuestGroupSentAtInSupabase } = await import(
+      "@/lib/supabase/server"
+    );
+    const updated = await setGuestGroupSentAtInSupabase(trimmedSlug, sentAt);
+    if (!updated) {
       return { ok: false, error: error("group_not_found") };
     }
     return { ok: true };

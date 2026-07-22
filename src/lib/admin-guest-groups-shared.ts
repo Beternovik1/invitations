@@ -221,3 +221,28 @@ export const INITIAL_GUEST_GROUP_DELETE_FORM_STATE: GuestGroupDeleteFormState = 
   status: "idle",
   slug: "",
 };
+
+/* -------------------------------------------------------------------------- */
+/*  Sent-state toggle (`Enviada`)                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Result of writing ONLY `sent_at` on a guest group. Same intentionally-empty
+ * success shape as `AdminGuestGroupDeleteResult`: the toggle's UI reverts to
+ * persisted data after `revalidatePath` refreshes `/admin/confirmaciones`, so
+ * the boundary does not need to echo the patched row back. Reusing
+ * `AdminGuestGroupError` keeps the Spanish error-message map and the machine
+ * codes shared with the other flows.
+ */
+export type AdminGuestGroupToggleSentResult =
+  | { ok: true }
+  | { ok: false; error: AdminGuestGroupError };
+
+/** Shape a Server Action can return to a non-form caller (the iPhone-style
+ *  switch does not post a form, so it invokes the action directly via
+ *  `startTransition` rather than `useActionState`). Carries back the slug on
+ *  success so the UI can match the card to react to (e.g. clear an error
+ *  banner); on failure `error.message` is Spanish inlines on the card. */
+export type GuestGroupToggleSentActionResult =
+  | { ok: true; slug: string }
+  | { ok: false; slug: string; error: AdminGuestGroupError };

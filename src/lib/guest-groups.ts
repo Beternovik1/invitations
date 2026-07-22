@@ -59,6 +59,12 @@ export interface GuestGroup {
    *  groups (returns `null`), so this is informational on the returned object.
    *  Mock entries omit it (mock mode treats all groups as active). */
   isActive?: boolean;
+  /** Server timestamp (UTC ISO) the host marked this invitation as sent (e.g.
+   *  via WhatsApp), or `null` when not sent yet. Added by migration 0005;
+   *  mock entries omit it (the in-repo mock never persists the toggle, and
+   *  the boundary refuses to fabricate a sent state in zero-config mode).
+   *  See `src/app/admin/(dashboard)/confirmaciones/ConfirmationsView.tsx`. */
+  sentAt?: string | null;
 }
 
 /**

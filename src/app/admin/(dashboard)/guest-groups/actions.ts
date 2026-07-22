@@ -9,10 +9,12 @@ import {
 import {
   createOrReactivateGuestGroupForAdmin,
   deleteGuestGroupForAdmin,
+  setGuestGroupSentAtForAdmin,
   updateGuestGroupForAdmin,
   type GuestGroupCreateFormState,
   type GuestGroupDeleteFormState,
   type GuestGroupFormState,
+  type GuestGroupToggleSentActionResult,
 } from "@/lib/admin-guest-groups";
 import {
   INITIAL_GUEST_GROUP_DELETE_FORM_STATE,
@@ -286,6 +288,84 @@ export async function deleteGuestGroupAction(
         code: "unexpected",
         message:
           "Ocurrió un problema al eliminar esta invitación. Inténtalo de nuevo en un momento.",
+      },
+    };
+  }
+}
+
+/**
+ * Admin guest-group `Enviada` toggle Server Action.
+ *
+ * Backs the iPhone-style `Enviada` switch on each `/admin/confirmaciones` card.
+ * The toggle is NOT a form submit (it is a role="switch" button), so unlike
+ * the update/create/delete actions this is NOT consumed via `useActionState`
+ * — the client calls it directly with `startTransition` and reacts optimistically.
+ *
+ *   - `sent === true`  -> the server PATCHes `sent_at` to a server-generated
+ *     UTC ISO timestamp (computed in the boundary, never trusted from the
+ *     client) so all clients/devices share the same host record. The `Enviada`
+ *     filter, the `Invitaciones enviadas` counter, and the card status badge
+ *     then all reflect persisted state.
+ *   - `sent === false` -> the server PATCHes `sent_at` to `null` to clear the
+ *     marker, so the card reverts to `Sin respuesta` (when no RSVP exists) and
+ *     the toggle visibly resets.
+ *
+ * Auth is re-verified immediately before the write, mirroring the
+ * update/create/delete actions: Server Actions are independently invokable, so
+ * the cookie gate next to the mutation matters regardless of the dashboard
+ * layout already redirecting unauthenticated visitors. No service role env name
+ * leaves the server — the boundary owns the Supabase REST call.
+ *
+ * On success it revalidates `/admin/confirmaciones` so the card's badge and the
+ * page's `Invitaciones enviadas` summary refresh from persisted data on the
+ * next render; it returns `{ ok: true, slug }` so the client can match the
+ * card and clear any error UI. On a known failure (`group_not_found`,
+ * `unavailable`, `unexpected`) it returns `{ ok: false, slug, error }` so the
+ * client can render the Spanish `error.message` inline without parsing strings.
+ * Only transport-level failures throw and are caught here, surfaced as
+ * `unexpected`.
+ *
+ * Idempotent on the happy path: toggling ON an already-sent row, or OFF an
+ * already-cleared row, PATCHes the same value again and succeeds.
+ */
+export async function toggleGuestGroupSentAction(
+  slug: string,
+  sent: boolean
+): Promise<GuestGroupToggleSentActionResult> {
+  // Re-verify auth immediately before any private mutation. Cheap and keeps
+  // the security decision next to the write — the toggle button ships in the
+  // authenticated layout, but a Server Action is independently invokable.
+  if (!isAdminAccessConfigured() || !(await isAdminAuthenticated())) {
+    return {
+      ok: false,
+      slug: slug,
+      error: {
+        code: "unexpected",
+        message:
+          "Tu sesión de administrador expiró. Recarga la página para iniciar sesión de nuevo.",
+      },
+    };
+  }
+
+  try {
+    const result = await setGuestGroupSentAtForAdmin(slug, sent);
+    if (result.ok) {
+      // Refresh the official Confirmaciones page so the card's status badge
+      // and the `Invitaciones enviadas` summary recompute from the freshly
+      // persisted `sent_at`. The legacy `/admin/rsvps` and `/admin/guest-groups`
+      // routes are redirect stubs, so they are not revalidated.
+      revalidatePath("/admin/confirmaciones");
+      return { ok: true, slug };
+    }
+    return { ok: false, slug, error: result.error };
+  } catch {
+    return {
+      ok: false,
+      slug,
+      error: {
+        code: "unexpected",
+        message:
+          "Ocurrió un problema al actualizar el estado de envío. Inténtalo de nuevo en un momento.",
       },
     };
   }

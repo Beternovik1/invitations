@@ -11,9 +11,9 @@
 // server fetch), exposes the four-state confirmation model the host asked for,
 // shows search + sort, has a `Copiar` button with the disabled state and helper
 // text for groups without seats, copies with the Spanish success message, and
-// does NOT ship a sent-state persistence path (because the schema has no sent
-// column). The accent-insensitive match helper is also exercised directly
-// since it is a pure runtime-safe function exported from the shared module.
+// persists the `Enviada` state through the server-loaded `sentAt` field. The
+// accent-insensitive match helper is also exercised directly since it is a pure
+// runtime-safe function exported from the shared module.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -135,7 +135,7 @@ test("CONFIRMATION_SORT_OPTIONS exposes only A-Z and Más lugares (the vague `Es
   assert.deepEqual(labels, ["A-Z", "Más lugares"]);
 });
 
-test("CONFIRMATION_FILTER_OPTIONS exposes Todos + the four data states + the session-only Enviada, in Spanish", () => {
+test("CONFIRMATION_FILTER_OPTIONS exposes Todos + the persisted Enviada state, in Spanish", () => {
   const values = CONFIRMATION_FILTER_OPTIONS.map((o) => o.value);
   assert.deepEqual(values, [
     "todos",
@@ -264,23 +264,16 @@ test("filterConfirmations: data-state filters resolve against persisted `(assign
   );
 });
 
-test("filterConfirmations: `enviada` is session-only — it reads the per-session sentSlugs set, not the DB", () => {
+test("filterConfirmations: `enviada` reads persisted sentAt from the loaded groups", () => {
   const input = [
-    group({ slug: "alpha", assignedSeats: 3, rsvp: null }),
-    group({ slug: "beta", assignedSeats: 3, rsvp: { attendingCount: 2 } }),
+    group({ slug: "alpha", assignedSeats: 3, rsvp: null, sentAt: "2026-07-22T00:00:00.000Z" }),
+    group({ slug: "beta", assignedSeats: 3, rsvp: { attendingCount: 2 }, sentAt: "2026-07-22T00:00:00.000Z" }),
+    group({ slug: "gamma", assignedSeats: 3, rsvp: null, sentAt: null }),
   ];
-  // No session marks => nothing matches `Enviada`.
+  // Only unanswered rows with persisted `sentAt` are `Enviada`; answered rows
+  // remain terminal (`Confirmado`/`Sin asistencia`) even if they were sent.
   assert.deepEqual(
-    filterConfirmations(input, "enviada", new Set()).map((g) => g.slug),
-    []
-  );
-  // With `alpha` marked sent in this session, only alpha matches — even though
-  // the persisted data says alpha is `sin_respuesta`. This pins down the
-  // honesty contract: `Enviada` is whatever the host marked this tab, not a
-  // claimed persisted state.
-  const sent = new Set(["alpha"]);
-  assert.deepEqual(
-    filterConfirmations(input, "enviada", sent).map((g) => g.slug),
+    filterConfirmations(input, "enviada").map((g) => g.slug),
     ["alpha"]
   );
 });
@@ -388,17 +381,16 @@ test("top insights expose all six metrics the host asked for, in Spanish", async
     );
   }
 
-  // `Enviados` is the only session-only insight: it reads `sentSlugs.size`,
-  // not the read-only data boundary. The card says so honestly.
+  // `Enviados` is backed by persisted `sent_at`, not session-only state.
   assert.match(
+    view,
+    /enviadosCount\s*=\s*summary\.groupsEnviados/,
+    "Enviados count must come from persisted summary data"
+  );
+  assert.doesNotMatch(
     view,
     /solo en esta sesión/,
-    "the `Invitaciones enviadas` card must flag that it is session-only"
-  );
-  assert.match(
-    view,
-    /enviadosCount\s*=\s*sentSlugs\.size/,
-    "Enviados count must come from the per-session sentSlugs set (not the DB)"
+    "the sent insight must no longer claim session-only behavior"
   );
 });
 
@@ -469,8 +461,8 @@ test("the view surfaces an explicit status filter (reusing the shared options) a
   );
   assert.match(
     view,
-    /filterConfirmations\(groups,\s*filterKey,\s*sentSlugs\)/,
-    "the visible list must be filtered through the shared helper with the session sentSlugs set"
+    /filterConfirmations\(groups,\s*filterKey\)/,
+    "the visible list must be filtered through the shared helper using persisted group data"
   );
 
   // The default sort is A-Z (the old `estado` default was dropped along with
@@ -544,7 +536,7 @@ test("copy-link action: disabled when no seats, success message is the Spanish o
   );
 });
 
-test("sent-state toggle: present and accessible, but no persistence path is shipped in this slice", async () => {
+test("sent-state toggle: present, accessible, and persisted through a Server Action", async () => {
   const view = await readSrc(VIEW);
 
   // The "Enviada" manual toggle the host asked for is present, with its
@@ -575,21 +567,22 @@ test("sent-state toggle: present and accessible, but no persistence path is ship
     "the on state paints the track green"
   );
 
-  // There is no Server Action being POSTed for the sent state, and no env
-  // reference: this slice is UI-only because the schema has no sent column.
-  // If a future migration adds the column, a real action can land here; until
-  // then toggling must stay local so the page does not lie about persistence.
-  assert.doesNotMatch(
-    view,
-    /import.*actions.*sent|sentAction|updateSentState/i,
-    "no sent-state Server Action is shipped (schema has no sent column)"
-  );
-
-  // The view honestly tells the host the sent toggle does not persist.
+  // Sent state is now persisted: the switch calls the dedicated Server Action,
+  // and the client never imports Supabase or a service-role env directly.
   assert.match(
     view,
-    /solo visible en esta sesión/,
-    "the helper copy must tell the host the sent toggle is session-only"
+    /toggleGuestGroupSentAction/,
+    "the sent toggle must call the persisted sent-state Server Action"
+  );
+  assert.match(
+    view,
+    /useTransition/,
+    "the sent toggle should invoke the action in a transition"
+  );
+  assert.doesNotMatch(
+    view,
+    /solo visible en esta sesión|solo en esta sesión/,
+    "the helper copy must no longer claim sent state is session-only"
   );
 });
 
