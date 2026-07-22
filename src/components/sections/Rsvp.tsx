@@ -119,16 +119,32 @@ export default function RsvpSection({
   const [count, setCount] = useState<number>(() =>
     computeInitialCount(confirmed?.attendingCount, seats),
   );
+  const countRef = useRef(count);
+  const countInputRef = useRef<HTMLInputElement | null>(null);
   const lastStepperTapAt = useRef(0);
+
+  const setSyncedCount = (nextCount: number) => {
+    countRef.current = nextCount;
+    if (countInputRef.current) {
+      countInputRef.current.value = String(nextCount);
+    }
+    setCount(nextCount);
+  };
 
   const toggleModify = () => {
     setShowModify((open) => {
       const nextOpen = !open;
       if (nextOpen) {
-        setCount(computeInitialCount(confirmed?.attendingCount, seats));
+        setSyncedCount(computeInitialCount(confirmed?.attendingCount, seats));
       }
       return nextOpen;
     });
+  };
+
+  const syncCountBeforeSubmit = () => {
+    if (countInputRef.current) {
+      countInputRef.current.value = String(countRef.current);
+    }
   };
 
   const updateCount = (direction: -1 | 1) => {
@@ -138,9 +154,11 @@ export default function RsvpSection({
     }
     lastStepperTapAt.current = now;
 
-    setCount((current) =>
-      Math.min(seats, Math.max(0, current + direction)),
+    const nextCount = Math.min(
+      seats,
+      Math.max(0, countRef.current + direction),
     );
+    setSyncedCount(nextCount);
   };
 
   const fieldsetId = useId();
@@ -300,6 +318,7 @@ export default function RsvpSection({
             <form
               id={modifyId}
               action={formAction}
+              onSubmit={syncCountBeforeSubmit}
               className="mt-8 w-full max-w-md"
             >
               <fieldset
@@ -388,7 +407,12 @@ export default function RsvpSection({
                     existing Server Action keeps reading `attendingCount` from
                     the FormData as before. `message` is pinned empty to match
                     the direct-confirm form — there is no message UI anymore. */}
-                <input type="hidden" name="attendingCount" value={count} />
+                <input
+                  ref={countInputRef}
+                  type="hidden"
+                  name="attendingCount"
+                  value={count}
+                />
                 <input type="hidden" name="message" value="" />
 
                 <button
