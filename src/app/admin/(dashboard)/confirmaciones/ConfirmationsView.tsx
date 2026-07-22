@@ -5,10 +5,12 @@ import { useFormStatus } from "react-dom";
 
 import {
   createGuestGroupAction,
+  deleteGuestGroupAction,
   updateGuestGroupAction,
 } from "@/app/admin/(dashboard)/guest-groups/actions";
 import {
   INITIAL_GUEST_GROUP_CREATE_FORM_STATE,
+  INITIAL_GUEST_GROUP_DELETE_FORM_STATE,
   INITIAL_GUEST_GROUP_FORM_STATE,
   MAX_ASSIGNED_SEATS,
   MAX_DISPLAY_NAME_LENGTH,
@@ -55,12 +57,18 @@ import type { AdminGuestGroup } from "@/lib/admin-overview";
  * migration adding a `sent_at`/`sent` column) is reported back, not silently
  * invented.
  *
- * "Modificar": this slice adds UPDATE-only editing of `displayName` and
- * `assignedSeats` per card. It is NOT a create/delete flow. The shared action
- * revalidates `/admin/confirmaciones` on success so the card's stats/status
- * badge refresh from persisted data; clearing `assignedSeats` therefore
- * naturally flips the card to "Sin lugares" and disables copy (driven by the
- * post-save data, not by local state).
+ * "Modificar": this slice adds UPDATE editing of `displayName` and
+ * `assignedSeats` per card, plus an inline `Eliminar` control at the bottom
+ * of the panel that soft-deletes the row (`is_active = false`) through a
+ * dedicated delete action with a two-step confirmation. The shared update
+ * action revalidates `/admin/confirmaciones` on success so the card's
+ * stats/status badge refresh from persisted data; clearing `assignedSeats`
+ * therefore naturally flips the card to "Sin lugares" and disables copy
+ * (driven by the post-save data, not by local state). The delete action also
+ * revalidates the unified list and legacy admin paths, so on success the card
+ * simply disappears from `/admin/confirmaciones` (the data boundary lists
+ * active groups only) while staying reactivate-able later via
+ * `Nueva invitación`.
  */
 export default function ConfirmationsView({
   groups,
@@ -543,6 +551,7 @@ function ModifyPanel({
   const fieldErrors = hasError ? feedback.error.fields : undefined;
 
   return (
+    <>
     <form action={formAction} className="mt-4 space-y-4 border-t border-(--color-glass-border) pt-4">
       <input type="hidden" name="slug" value={group.slug} />
       {/* Preserve fields this panel does NOT expose, so the shared action does
@@ -617,6 +626,118 @@ function ModifyPanel({
         <SaveButton />
       </div>
     </form>
+
+    {/* `Eliminar`: a separate delete form below the inline update form. It is
+        its own <form> so submitting it never also submits the update fields.
+        The host-facing control says "Eliminar"(remove), not "soft-delete".
+        A two-step confirmation (reveal prompt -> final submit) keeps the
+        delete out of reach of a single accidental tap.
+
+        The delete action reuses the SAME guest-groups actions module, so no
+        client-side Supabase and no service-role env name leaks. The action
+        soft-deletes (`is_active = false`), so `Nueva invitación` can bring the
+        link back later. On success `revalidatePath` refreshes the active list,
+        so this card simply disappears from the unified page on the next
+        render. */}
+    <DeleteControl group={group} onCancel={onCancel} />
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Inline delete (soft-delete) control                                        */
+/* -------------------------------------------------------------------------- */
+
+/* `Eliminar` confirmation flow, rendered at the bottom of the inline
+   `Modificar` panel. The host first taps `Eliminar` to reveal the
+   confirmation prompt ("¿Eliminar esta invitación?"), then taps a second
+   `Eliminar` button to actually submit. The second button lives inside a
+   real <form> whose `action` is the shared delete Server Action, so a stray
+   tap on the first `Eliminar` never deletes anything.
+
+   Per the host's instruction, the dad-facing copy says "Eliminar" (delete),
+   never "soft-delete": the row's `is_active` flag toggling is the
+   implementation, not the vocabulary. The helper line tells the host what
+   actually happens (the link stops working and can be reactivated later). */
+function DeleteControl({
+  group,
+  onCancel,
+}: {
+  group: AdminGuestGroup;
+  onCancel: () => void;
+}) {
+  // The delete form uses its OWN `useActionState` (separate from the update
+  // form's), so the two flows never share feedback state on the same card.
+  // The panel mounts only when the card is in edit mode, so this hook resets
+  // fresh each time the host opens `Modificar`.
+  const [deleteState, deleteAction] = useActionState(
+    deleteGuestGroupAction,
+    INITIAL_GUEST_GROUP_DELETE_FORM_STATE
+  );
+  const [confirming, setConfirming] = useState(false);
+  // Only the card whose slug matches the action's returned state shows
+  // delete error feedback; the success branch needs no UI because the card
+  // disappears from the active list after `revalidatePath`.
+  const deleteFeedback =
+    deleteState.slug === group.slug ? deleteState : null;
+  const deleteError = deleteFeedback?.status === "error";
+
+  return (
+    <div className="mt-4 space-y-3 border-t border-(--color-glass-border) pt-4">
+      {confirming ? (
+        <form action={deleteAction} className="space-y-3">
+          <input type="hidden" name="slug" value={group.slug} />
+          <p className="text-sm text-(--color-ink)">
+            ¿Eliminar esta invitación?
+          </p>
+          <p className="text-xs text-(--color-ink-dim)">
+            El enlace dejará de funcionar. Podrás reactivarlo después con
+            &laquo;Nueva invitación&raquo;.
+          </p>
+          {deleteError ? (
+            <p className="rounded-xl border border-(--color-gold)/40 bg-(--color-pale-yellow-green)/35 px-3 py-2 text-sm text-(--color-ink)">
+              {deleteFeedback.error.message}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setConfirming(false);
+                onCancel();
+              }}
+              className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
+            >
+              Cancelar
+            </button>
+            <ConfirmDeleteButton />
+          </div>
+        </form>
+      ) : (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="rounded-xl border border-red-500/40 bg-red-50/60 px-3 py-2 text-xs uppercase tracking-[0.14em] text-red-700 transition hover:border-red-500"
+          >
+            Eliminar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConfirmDeleteButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="rounded-xl border border-red-500/50 bg-red-600/90 px-3 py-2 text-xs uppercase tracking-[0.14em] text-white transition hover:border-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {pending ? "Eliminando…" : "Eliminar"}
+    </button>
   );
 }
 

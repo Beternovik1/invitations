@@ -177,3 +177,47 @@ export type GuestGroupCreateFormState =
 export const INITIAL_GUEST_GROUP_CREATE_FORM_STATE: GuestGroupCreateFormState = {
   status: "idle",
 };
+
+/* -------------------------------------------------------------------------- */
+/*  Delete (soft-delete: is_active = false)                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Result of a soft-delete. On success the boundary does NOT need to return the
+ * patched row — the UI only fans feedback by `slug` and `revalidatePath`
+ * refreshes the list — so the success branch is intentionally empty (no
+ * `group` payload). On failure it carries the structured error like the other
+ * flows. Reusing `AdminGuestGroupError` keeps the Spanish error-message map
+ * and the machine codes shared with the update/create boundaries.
+ */
+export type AdminGuestGroupDeleteResult =
+  | { ok: true }
+  | { ok: false; error: AdminGuestGroupError };
+
+/**
+ * Form state exchanged between the delete Server Action and the inline
+ * confirmation form on the `Modificar` panel via `useActionState`.
+ *
+ * Mirrors `GuestGroupFormState` (update): `slug` is carried back so the
+ * single delete `useActionState` reducer can fan feedback out to the matching
+ * card even though all cards share the same action instance.
+ *
+ *   - `idle`: initial render / no delete attempted yet.
+ *   - `success`: the soft-delete landed; `revalidatePath` has refreshed
+ *     `/admin/confirmaciones`, so the card is no longer in the active list that
+ *     the data boundary returns. No success UI is needed: the card simply
+ *     vanishes from the page on the next render. Carrying `slug` is still
+ *     useful for tests / log instrumentation.
+ *   - `error`: not found (deleted out-of-band), unavailable (mock mode), or
+ *     transport failure. `error` carries the structured result for inline
+ *     feedback inside the confirmation form.
+ */
+export type GuestGroupDeleteFormState =
+  | { status: "idle"; slug: string }
+  | { status: "success"; slug: string }
+  | { status: "error"; slug: string; error: AdminGuestGroupError };
+
+export const INITIAL_GUEST_GROUP_DELETE_FORM_STATE: GuestGroupDeleteFormState = {
+  status: "idle",
+  slug: "",
+};

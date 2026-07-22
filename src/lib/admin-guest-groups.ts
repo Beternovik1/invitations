@@ -47,10 +47,12 @@ import {
   slugifyGuestGroupName,
   type AdminGuestGroupActionResult,
   type AdminGuestGroupCreateInput,
+  type AdminGuestGroupDeleteResult,
   type AdminGuestGroupError,
   type AdminGuestGroupErrorCode,
   type AdminGuestGroupInput,
   type GuestGroupCreateFormState,
+  type GuestGroupDeleteFormState,
   type GuestGroupFormState,
 } from "@/lib/admin-guest-groups-shared";
 
@@ -65,10 +67,12 @@ export {
   slugifyGuestGroupName,
   type AdminGuestGroupActionResult,
   type AdminGuestGroupCreateInput,
+  type AdminGuestGroupDeleteResult,
   type AdminGuestGroupError,
   type AdminGuestGroupErrorCode,
   type AdminGuestGroupInput,
   type GuestGroupCreateFormState,
+  type GuestGroupDeleteFormState,
   type GuestGroupFormState,
 };
 
@@ -376,6 +380,66 @@ export async function createOrReactivateGuestGroupForAdmin(
       seatsNote: null,
     });
     return { ok: true, group: created };
+  } catch {
+    return { ok: false, error: error("unexpected") };
+  }
+}
+
+/**
+ * Soft-delete a guest group by slug: flip `is_active` to `false`.
+ *
+ * Why soft-delete and not DELETE:
+ *   - The `Nueva invitación` flow can REACTIVATE a row whose `is_active` was
+ *     flipped to `false` (reusing the same slug), so the host's previous
+ *     `display_name`/`assigned_seats`/`seats_note` survive a temporary delete
+ *     instead of being irrecoverably dropped. A hard DELETE would lose them and
+ *     force the host to re-enter everything when "García" eventually replies
+ *     again.
+ *   - No RSVP rows are destroyed: `rsvps.guest_group_slug` keeps its FK target
+ *     (the row still exists, just inactive), so an existing confirmation
+ *     remains intact and is restored automatically on reactivation. The
+ *     existing architecture never cascades RSVPs on a deactivate; this boundary
+ *     preserves that contract and only mutates the `guest_groups` row.
+ *   - The existing UPDATE grant from migration 0003 covers PATCHing
+ *     `is_active`, so no new migration and no DELETE/INSERT grant is required.
+ *
+ * Never throws for expected failures — returns a structured
+ * `{ ok: false, error }` so the Server Action can surface them inline:
+ *   - empty slug  -> `group_not_found` (defensive; the action also guards this
+ *     and returns idle for a tampered form, but the boundary stays honest if
+ *     called directly).
+ *   - no row matched the slug (deleted out-of-band between page load and
+ *     click) -> `group_not_found`.
+ *   - mock mode (Supabase not configured) -> `unavailable`.
+ *
+ * Only truly unexpected transport failures throw, and the Server Action
+ * converts those into an `unexpected` result.
+ *
+ * The returned shape is `AdminGuestGroupDeleteResult` (no `group` payload on
+ * success) because the UI only fans feedback by `slug` — `revalidatePath`
+ * refreshes the list, not the returned row.
+ */
+export async function deleteGuestGroupForAdmin(
+  slug: string
+): Promise<AdminGuestGroupDeleteResult> {
+  const trimmedSlug = slug.trim();
+  if (trimmedSlug.length === 0) {
+    return { ok: false, error: error("group_not_found") };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { ok: false, error: error("unavailable") };
+  }
+
+  try {
+    const { softDeleteGuestGroupInSupabase } = await import(
+      "@/lib/supabase/server"
+    );
+    const deleted = await softDeleteGuestGroupInSupabase(trimmedSlug);
+    if (!deleted) {
+      return { ok: false, error: error("group_not_found") };
+    }
+    return { ok: true };
   } catch {
     return { ok: false, error: error("unexpected") };
   }

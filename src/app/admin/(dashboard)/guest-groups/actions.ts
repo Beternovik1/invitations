@@ -8,11 +8,16 @@ import {
 } from "@/lib/admin-access";
 import {
   createOrReactivateGuestGroupForAdmin,
+  deleteGuestGroupForAdmin,
   updateGuestGroupForAdmin,
   type GuestGroupCreateFormState,
+  type GuestGroupDeleteFormState,
   type GuestGroupFormState,
 } from "@/lib/admin-guest-groups";
-import { INITIAL_GUEST_GROUP_FORM_STATE } from "@/lib/admin-guest-groups-shared";
+import {
+  INITIAL_GUEST_GROUP_DELETE_FORM_STATE,
+  INITIAL_GUEST_GROUP_FORM_STATE,
+} from "@/lib/admin-guest-groups-shared";
 
 /**
  * Admin guest-group update Server Action.
@@ -197,6 +202,98 @@ export async function createGuestGroupAction(
         code: "unexpected",
         message:
           "Ocurrió un problema al crear este grupo. Inténtalo de nuevo en un momento.",
+      },
+    };
+  }
+}
+
+/**
+ * Admin guest-group soft-delete Server Action.
+ *
+ * Backs the inline `Eliminar` confirmation inside the `Modificar` panel on
+ * `/admin/confirmaciones`. Soft-delete = PATCH `is_active = false`, NOT a hard
+ * DELETE: the row survives so `Nueva invitación` can reactivate the same slug
+ * later (preserving `display_name` / `assigned_seats` / `seats_note` and any
+ * existing RSVP). See `deleteGuestGroupForAdmin` for the why.
+ *
+ * All cards on `confirmaciones` share this single action — each confirmation
+ * form posts its own `slug` as a hidden field — and is consumed via
+ * `useActionState` with a `(prevState, formData)` signature. Running on the
+ * server keeps the service-role key and all Supabase access off the client.
+ *
+ * Access is re-verified immediately before the write, mirroring the update and
+ * create actions. The layout already redirected unauthenticated visitors, but
+ * a Server Action is independently invokable: this guard makes sure no private
+ * mutation happens without a valid admin session, even if the action is called
+ * directly.
+ *
+ * Returns a structured `GuestGroupDeleteFormState` — never throws for expected
+ * validation failures (`deleteGuestGroupForAdmin` already converts those into
+ * `{ ok: false, error }`). Only transport-level failures throw; they are caught
+ * here and surfaced as an `error` state so the confirmation form stays usable.
+ * `slug` is carried back so the single `useActionState` reducer can fan
+ * feedback out to the matching card.
+ *
+ * On success `revalidatePath` refreshes:
+ *   - `/admin/confirmaciones`: the data boundary returns active groups only,
+ *     so the card disappears from the unified list the host just acted on.
+ *   - `/admin/guest-groups`: the legacy editor lists inactive rows too, so the
+ *     row stays visible (now flagged "Inactivo") and the host can reactivate it
+ *     later.
+ *   - `/admin/rsvps`: the legacy read-only overview filters active groups, so
+ *     the card disappears there too — keeps the static overview honest without
+ *     waiting for a manual reload.
+ */
+export async function deleteGuestGroupAction(
+  prevState: GuestGroupDeleteFormState,
+  formData: FormData
+): Promise<GuestGroupDeleteFormState> {
+  const rawSlug = formData.get("slug");
+  const slug = typeof rawSlug === "string" ? rawSlug.trim() : "";
+
+  if (slug.length === 0) {
+    // No slug means the form was tampered or rendered without one. There is no
+    // matching card to fan feedback to; return idle so the UI does not flap.
+    // The client guards against this by always rendering the hidden slug field.
+    return INITIAL_GUEST_GROUP_DELETE_FORM_STATE;
+  }
+
+  // Re-verify auth immediately before any private mutation. Cheap and keeps
+  // the security decision next to the write.
+  if (!isAdminAccessConfigured() || !(await isAdminAuthenticated())) {
+    return {
+      status: "error",
+      slug,
+      error: {
+        code: "unexpected",
+        message:
+          "Tu sesión de administrador expiró. Recarga la página para iniciar sesión de nuevo.",
+      },
+    };
+  }
+
+  try {
+    const result = await deleteGuestGroupForAdmin(slug);
+    if (result.ok) {
+      // Refresh the three admin surfaces so every list the host could be
+      // looking at reflects the soft-delete on the next render. The public
+      // `/i/[slug]` route is already `force-dynamic` (cache: no-store), so no
+      // revalidate is needed there: the next visit renders the
+      // "not found" view because the public lookup hides inactive rows.
+      revalidatePath("/admin/confirmaciones");
+      revalidatePath("/admin/guest-groups");
+      revalidatePath("/admin/rsvps");
+      return { status: "success", slug };
+    }
+    return { status: "error", slug, error: result.error };
+  } catch {
+    return {
+      status: "error",
+      slug,
+      error: {
+        code: "unexpected",
+        message:
+          "Ocurrió un problema al eliminar esta invitación. Inténtalo de nuevo en un momento.",
       },
     };
   }

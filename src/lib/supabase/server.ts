@@ -433,6 +433,61 @@ export async function insertGuestGroupInSupabase(
 }
 
 /**
+ * Soft-delete a guest group by slug: PATCH `is_active = false` ONLY.
+ *
+ * Unlike `updateGuestGroupInSupabase`, which PATCHes `display_name`,
+ * `assigned_seats`, `seats_note`, and `is_active` together (a full-row edit
+ * from the admin form), this helper PATCHes ONLY `is_active`. PostgREST PATCH
+ * is partial: columns absent from the body are left untouched, so
+ * `display_name`, `assigned_seats`, `seats_note`, and `notes` keep their stored
+ * values and an existing RSVP row (in the `rsvps` table, linked by
+ * `guest_group_slug`) is fully preserved — neither truncated nor deleted. The
+ * row stays queryable through `findGuestGroupBySlugIncludingInactiveFromSupabase`
+ * so the `Nueva invitación` create flow can reactivate it later.
+ *
+ * The slug is the immutable primary key and selects the row; it never appears
+ * in the body. `return=representation` plus the `select` param returns the
+ * patched row so the boundary can tell "matched and patched" (row returned)
+ * from "no row matched" (empty array -> mapped to `group_not_found`).
+ *
+ * Requires only the existing UPDATE table privilege (see migration 0003): a
+ * PATCH of `is_active` is an UPDATE, so neither a DELETE nor an INSERT grant is
+ * needed. The migration intentionally does NOT grant DELETE on
+ * `guest_groups` — the admin never hard-deletes in this slice.
+ */
+export async function softDeleteGuestGroupInSupabase(
+  slug: string
+): Promise<GuestGroup | null> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${REST_PATH}` +
+    `?slug=eq.${encodeURIComponent(slug)}` +
+    `&select=${COLUMNS}`;
+
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      ...authHeaders(serviceRoleKey),
+      Prefer: "return=representation",
+    },
+    cache: "no-store",
+    body: JSON.stringify({ is_active: false }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase soft-delete for guest group "${slug}" failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: GuestGroupRow[] = await res.json();
+  const row = rows[0];
+  if (!row) return null;
+  return mapRow(row);
+}
+
+/**
  * All active guest groups with their RSVP joined in, ascending by slug.
  *
  * Uses PostgREST's embedded resource selection (`select=...,rsvps(...)`) so the

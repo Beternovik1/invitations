@@ -695,10 +695,11 @@ test("modificar: the inline edit panel only edits displayName + assignedSeats an
     "edit state is gated by comparing editingSlug to the card's slug"
   );
 
-  // Only two fields are editable; the other mutable fields are carried through
-  // hidden inputs so the shared action does not wipe them. `isActive="on"`
-  // keeps the invitation link enabled (this page lists active groups only),
-  // and `seatsNote` is echoed back so a prior note survives a name/seats edit.
+  // Only two fields are editable in the UPDATE form; the other mutable fields
+  // are carried through hidden inputs so the shared update action does not
+  // wipe them. `isActive="on"` keeps the invitation link enabled (this page
+  // lists active groups only), and `seatsNote` is echoed back so a prior note
+  // survives a name/seats edit.
   assert.match(view, /name="displayName"/, "panel exposes an editable displayName field");
   assert.match(view, /name="assignedSeats"/, "panel exposes an editable assignedSeats field");
   assert.match(view, /name="isActive"[^>]*value="on"/, "panel carries isActive as hidden 'on' to preserve the link");
@@ -711,12 +712,6 @@ test("modificar: the inline edit panel only edits displayName + assignedSeats an
     /<input type="hidden" name="slug" value=\{group\.slug\} \/>/,
     "panel submits the card's slug as a hidden field"
   );
-
-  // The panel MUST NOT expose `Eliminar` (still deferred to a later slice).
-  // `Nueva invitación` is now shipped as its own panel, so it is asserted in
-  // the dedicated `nueva invitación` tests below — here we only lock the
-  // inline Modificar panel against accidentally growing a delete button.
-  assert.doesNotMatch(view, /Eliminar/, "this slice does NOT ship `Eliminar` (deferred)");
 });
 
 /* -------------------------------------------------------------------------- */
