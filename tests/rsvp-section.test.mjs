@@ -90,7 +90,7 @@ test("modify form carries the stepper count as hidden attendingCount and uses gu
   // attendingCount field — the visible number is not directly editable.
   assert.match(
     src,
-    /<input type="hidden" name="attendingCount" value=\{count\} \/>/,
+    /<input[\s\S]*ref=\{countInputRef\}[\s\S]*type="hidden"[\s\S]*name="attendingCount"[\s\S]*value=\{count\}[\s\S]*\/>/,
     "modify form must submit hidden attendingCount=count",
   );
 
@@ -109,8 +109,38 @@ test("modify form carries the stepper count as hidden attendingCount and uses gu
   );
   assert.match(
     src,
-    /setCount\(\(current\) =>\s*Math\.min\(seats,\s*Math\.max\(0,\s*current \+ direction\)\),\s*\);/,
-    "guarded update handler must clamp count to 0..seats",
+    /const nextCount = Math\.min\(\s*seats,\s*Math\.max\(0,\s*countRef\.current \+ direction\),\s*\);[\s\S]*setSyncedCount\(nextCount\);/,
+    "guarded update handler must synchronously clamp from the latest ref value",
+  );
+});
+
+test("modify submit synchronizes hidden count before Server Action submission", async () => {
+  const src = await readSrc(SECTION);
+
+  assert.match(
+    src,
+    /const countRef = useRef\(count\);/,
+    "must keep the latest count in a ref that is not delayed by rendering",
+  );
+  assert.match(
+    src,
+    /const countInputRef = useRef<HTMLInputElement \| null>\(null\);/,
+    "must hold a ref to the hidden attendingCount input",
+  );
+  assert.match(
+    src,
+    /const syncCountBeforeSubmit = \(\) => \{[\s\S]*countInputRef\.current\.value = String\(countRef\.current\);[\s\S]*\};/,
+    "must force the hidden input to the latest ref value before submit",
+  );
+  assert.match(
+    src,
+    /const setSyncedCount = \(nextCount: number\) => \{[\s\S]*countRef\.current = nextCount;[\s\S]*countInputRef\.current\.value = String\(nextCount\);[\s\S]*setCount\(nextCount\);[\s\S]*\};/,
+    "must update the ref and hidden input synchronously before scheduling React state",
+  );
+  assert.match(
+    src,
+    /onSubmit=\{syncCountBeforeSubmit\}/,
+    "modify form must sync count immediately before browser form submission",
   );
 });
 
@@ -136,7 +166,7 @@ test("stepper count resets only when modify opens, not during render", async () 
   // otherwise clobber in-progress edits and make numbers jump backward.
   assert.match(
     src,
-    /const toggleModify = \(\) => \{[\s\S]*setCount\(computeInitialCount\(confirmed\?\.attendingCount,\s*seats\)\);[\s\S]*\};/,
+    /const toggleModify = \(\) => \{[\s\S]*setSyncedCount\(computeInitialCount\(confirmed\?\.attendingCount,\s*seats\)\);[\s\S]*\};/,
     "must reset count only from the modify toggle handler",
   );
 
