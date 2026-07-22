@@ -1,55 +1,27 @@
-import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import AdminPageHeader from "@/app/admin/_components/AdminPageHeader";
-import GuestGroupEditor from "@/app/admin/(dashboard)/guest-groups/GuestGroupEditor";
-import {
-  isAdminAccessConfigured,
-  isAdminAuthenticated,
-} from "@/lib/admin-access";
-import { getAllGuestGroupsForAdmin } from "@/lib/admin-guest-groups";
-
 /**
- * Guest groups admin editor.
+ * Redirect stub for the legacy `/admin/guest-groups` route.
  *
- * Lets the host maintain existing guest groups without touching Supabase:
- * display name, assigned seats, seats note, and active/inactive. Slugs remain
- * immutable in this slice, and there is no create/delete flow — inactive is the
- * safe soft-delete path.
+ * `Confirmaciones` is now the single official admin screen. Editing, creating,
+ * and soft-deleting now happen inline on `/admin/confirmaciones` (the
+ * `Modificar` / `Nueva invitación` / `Eliminar` flows reuse the shared Server
+ * Actions in `guest-groups/actions.ts`), so this separate editor is no longer
+ * reachable from navigation. Instead of a hard 404, anyone who still has the
+ * old URL bookmarked is sent to the official page.
  *
- * Like the RSVP overview, this page repeats admin auth immediately before the
- * private fetch instead of relying only on the dashboard layout. The page is a
- * Server Component; the client editor receives only rows and posts mutations
- * through a Server Action.
+ * The shared `actions.ts` module stays in this folder as the neutral mutation
+ * surface imported by `/admin/confirmaciones` — only this page (the old
+ * editor) is removed.
  *
- * `title` is merged with the dashboard layout's `robots: noindex`, so this
- * route stays out of search engines without restating it here.
+ * Lives inside the `(dashboard)` route group, so the auth gate in the layout
+ * runs first: unauthenticated visitors go to `/admin/login`, authenticated
+ * hosts reach this redirect. The redirect is a plain server `redirect` with no
+ * private fetch.
  */
 
-export const metadata: Metadata = {
-  title: "Modificar invitados",
-};
+export const metadata = { title: "Modificar invitados" };
 
-export default async function AdminGuestGroupsPage() {
-  if (!isAdminAccessConfigured() || !(await isAdminAuthenticated())) {
-    redirect("/admin/login");
-  }
-
-  const groups = await getAllGuestGroupsForAdmin();
-
-  return (
-    <section>
-      <AdminPageHeader title="Modificar invitados" eyebrow="administrador" />
-
-      <p className="mb-6 max-w-3xl text-sm text-(--color-ink-dim)">
-        Busca un grupo, selecciónalo y edita su nombre, número de lugares, nota
-        de lugares o enlace de invitación. Deja los lugares asignados vacíos
-        cuando el número todavía no se confirma. Los grupos inactivos dejan de
-        mostrar su enlace de invitación personalizado, pero el renglón sigue
-        disponible aquí para reactivarlo después.
-      </p>
-
-      <GuestGroupEditor groups={groups} />
-    </section>
-  );
+export default function AdminGuestGroupsRedirectPage(): never {
+  redirect("/admin/confirmaciones");
 }

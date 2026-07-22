@@ -1,7 +1,7 @@
 /**
- * Runtime-safe constants and types shared by the admin guest-group editor
- * server boundary (`src/lib/admin-guest-groups.ts`) and the client editor UI
- * (`src/app/admin/(dashboard)/guest-groups/GuestGroupEditor.tsx`).
+ * Runtime-safe constants and types shared by the admin guest-group server
+ * boundary (`src/lib/admin-guest-groups.ts`) and the unified Confirmaciones
+ * client UI (`src/app/admin/(dashboard)/confirmaciones/ConfirmationsView.tsx`).
  *
  * This module MUST stay free of any server-only or Supabase imports — including
  * dynamic `import("@/lib/supabase/server")`. The boundary module re-exports

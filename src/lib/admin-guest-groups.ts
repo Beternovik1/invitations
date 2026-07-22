@@ -1,9 +1,9 @@
 /**
- * Admin guest-group data boundary (read list + update fields).
+ * Admin guest-group data boundary (create, update, and soft-delete groups).
  *
- * This module is the single source of truth the `/admin/guest-groups` route and
- * its Server Action use to list every group (active AND inactive) and to patch a
- * group's mutable fields. It mirrors the other boundaries
+ * This module is the single source of truth the official `/admin/confirmaciones`
+ * page's Server Actions use to create invitations, reactivate inactive rows,
+ * patch mutable fields, and soft-delete groups. It mirrors the other boundaries
  * (`guest-groups.ts`, `rsvps.ts`, `admin-overview.ts`):
  *
  * - When Supabase is configured (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`),

@@ -19,8 +19,10 @@
 //      `is_active` and never issues a DELETE — confirmed by no DELETE grant
 //      being added in any migration.
 //   4. `deleteGuestGroupAction` re-verifies admin auth before mutating,
-//      revalidates `/admin/confirmaciones` plus the old guest-groups / rsvps
-//      admin paths, and shares the actions module's single mutation surface.
+//      revalidates the official `/admin/confirmaciones` surface, and shares the
+//      actions module's single mutation surface. The legacy `/admin/rsvps` and
+//      `/admin/guest-groups` routes are now redirect stubs, so they are no
+//      longer revalidated.
 //   5. The view mounts the `Eliminar` control INSIDE the `Modificar` panel
 //      with a two-step confirmation, uses the shared delete action through
 //      `useActionState`, and ships no client-side Supabase / service-role env.
@@ -311,26 +313,27 @@ test("action: re-verifies admin auth immediately before the soft-delete", async 
   );
 });
 
-test("action: revalidates `/admin/confirmaciones`, `/admin/guest-groups`, and `/admin/rsvps` on success", async () => {
+test("action: revalidates only `/admin/confirmaciones` on success (legacy routes are redirect stubs)", async () => {
   const action = await readSrc(ACTION);
-  // The three admin paths the host could be looking at — the unified list, the
-  // legacy editor (lists inactive rows), and the legacy read-only overview
-  // (renders active groups). Pinning each keeps a future refactor from
-  // leaving a stale card on any of them.
+  // Confirmaciones is the single official admin surface; the legacy
+  // `/admin/rsvps` and `/admin/guest-groups` routes are now redirect stubs, so
+  // revalidating them would be meaningless. Pinning only the official path
+  // keeps a future refactor from silently re-introducing references to the
+  // dead routes.
   assert.match(
     action,
     /revalidatePath\("\/admin\/confirmaciones"\)/,
     "delete action must revalidate `/admin/confirmaciones` (unified list — card disappears)"
   );
-  assert.match(
+  assert.doesNotMatch(
     action,
     /revalidatePath\("\/admin\/guest-groups"\)/,
-    "delete action must revalidate `/admin/guest-groups` (legacy editor — row stays visible as inactive)"
+    "delete action must NOT revalidate the legacy `/admin/guest-groups` (now a redirect)"
   );
-  assert.match(
+  assert.doesNotMatch(
     action,
     /revalidatePath\("\/admin\/rsvps"\)/,
-    "delete action must revalidate `/admin/rsvps` (legacy read-only overview — card disappears)"
+    "delete action must NOT revalidate the legacy `/admin/rsvps` (now a redirect)"
   );
 
   // The delete action must call the boundary and fan success/error back.

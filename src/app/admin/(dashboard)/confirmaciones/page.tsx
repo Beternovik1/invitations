@@ -32,10 +32,9 @@ import { getActiveGuestGroupsWithRsvp } from "@/lib/admin-overview";
  * guest-group editor's `CopyInvitationButton` already uses. No service-role
  * key or Supabase URL ever reaches the client.
  *
- * This page is intentionally NOT linked from the dashboard sidebar yet (the
- * host wants to approve it visually first); it is reachable directly at
- * `/admin/confirmaciones`. The legacy `/admin/rsvps` and
- * `/admin/guest-groups` pages are untouched.
+ * This page is the single official admin destination. The sidebar links here
+ * only, and the legacy `/admin/rsvps` and `/admin/guest-groups` routes are now
+ * redirect stubs back to `/admin/confirmaciones`.
  */
 export const metadata: Metadata = {
   title: "Confirmaciones",
@@ -57,9 +56,8 @@ export default async function AdminConfirmacionesPage() {
           Vista unificada por familia: copia el enlace de cada grupo, revisa los
           seis indicadores (lugares, confirmaciones, invitaciones, respuestas,
           enviadas en esta sesión y sin lugares), filtra por estado y marca
-          &ldquo;Enviada&rdquo; a mano. Es una base funcional con el estilo actual
-          del administrador; todavía no reemplaza las pantallas de Confirmaciones
-          ni de Modificar invitados.
+          &ldquo;Enviada&rdquo; a mano. Desde aquí también modificas, creas y
+          eliminas invitaciones.
         </p>
 
         <p>

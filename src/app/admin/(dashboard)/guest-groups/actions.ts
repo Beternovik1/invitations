@@ -99,16 +99,12 @@ export async function updateGuestGroupAction(
       isActive,
     });
     if (result.ok) {
-      // Refresh the page's data cache so the list reflects the persisted
-      // values immediately on the next render (isActive toggling, seat count,
-      // note, etc.).
-      //
-      // The unified `/admin/confirmaciones` page reuses this same action for
-      // its inline `Modificar` panel, so it must be revalidated too — otherwise
-      // a save from the confirmaciones card would leave that page showing stale
-      // seat counts / status badges until a manual reload. Both paths are cheap
-      // to revalidate and the action is the single shared mutation surface.
-      revalidatePath("/admin/guest-groups");
+      // Refresh the official Confirmaciones page's data cache so the list
+      // reflects the persisted values immediately on the next render (isActive
+      // toggling, seat count, note, etc.). The unified `/admin/confirmaciones`
+      // page reuses this action for its inline `Modificar` panel, so this is
+      // the only admin surface that needs revalidation now that the legacy
+      // `/admin/rsvps` and `/admin/guest-groups` routes are redirect stubs.
       revalidatePath("/admin/confirmaciones");
       return { status: "success", slug };
     }
@@ -186,11 +182,11 @@ export async function createGuestGroupAction(
       assignedSeats,
     });
     if (result.ok) {
-      // Refresh both admin surfaces so the new/reactivated card appears on
-      // the next render. The public `/i/[slug]` route is force-dynamic, so no
-      // revalidate is needed there. The guest-groups editor lists inactive
-      // rows too, so it must be refreshed alongside the confirmaciones page.
-      revalidatePath("/admin/guest-groups");
+      // Refresh the official Confirmaciones page so the new/reactivated card
+      // appears on the next render. The public `/i/[slug]` route is
+      // force-dynamic, so no revalidate is needed there. The legacy
+      // `/admin/guest-groups` route is now a redirect stub, so only the
+      // confirmaciones surface needs revalidation.
       revalidatePath("/admin/confirmaciones");
       return { status: "success", slug: result.group.slug };
     }
@@ -234,15 +230,11 @@ export async function createGuestGroupAction(
  * `slug` is carried back so the single `useActionState` reducer can fan
  * feedback out to the matching card.
  *
- * On success `revalidatePath` refreshes:
- *   - `/admin/confirmaciones`: the data boundary returns active groups only,
- *     so the card disappears from the unified list the host just acted on.
- *   - `/admin/guest-groups`: the legacy editor lists inactive rows too, so the
- *     row stays visible (now flagged "Inactivo") and the host can reactivate it
- *     later.
- *   - `/admin/rsvps`: the legacy read-only overview filters active groups, so
- *     the card disappears there too — keeps the static overview honest without
- *     waiting for a manual reload.
+ * On success `revalidatePath` refreshes `/admin/confirmaciones`: the data
+ * boundary returns active groups only, so the soft-deleted card disappears from
+ * the unified list the host just acted on. The legacy `/admin/rsvps` and
+ * `/admin/guest-groups` routes are now redirect stubs, so they no longer need
+ * revalidation (they never render guest data themselves).
  */
 export async function deleteGuestGroupAction(
   prevState: GuestGroupDeleteFormState,
@@ -275,14 +267,14 @@ export async function deleteGuestGroupAction(
   try {
     const result = await deleteGuestGroupForAdmin(slug);
     if (result.ok) {
-      // Refresh the three admin surfaces so every list the host could be
-      // looking at reflects the soft-delete on the next render. The public
+      // Refresh the official Confirmaciones page so the soft-deleted card
+      // disappears from the unified list on the next render. The public
       // `/i/[slug]` route is already `force-dynamic` (cache: no-store), so no
-      // revalidate is needed there: the next visit renders the
-      // "not found" view because the public lookup hides inactive rows.
+      // revalidate is needed there: the next visit renders the "not found"
+      // view because the public lookup hides inactive rows. The legacy
+      // rsvps/guest-groups routes are redirect stubs, so they are not
+      // revalidated.
       revalidatePath("/admin/confirmaciones");
-      revalidatePath("/admin/guest-groups");
-      revalidatePath("/admin/rsvps");
       return { status: "success", slug };
     }
     return { status: "error", slug, error: result.error };

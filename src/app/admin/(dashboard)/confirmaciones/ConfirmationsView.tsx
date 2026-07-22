@@ -45,9 +45,9 @@ import type { AdminGuestGroup } from "@/lib/admin-overview";
  * `window.location.origin` with the safe path (`/i/[slug]`) the page
  * computed, so the absolute invitation URL the host copies is built
  * client-side from the page origin plus a non-secret path. The `Modificar`
- * panel posts to the SAME `updateGuestGroupAction` the
- * `/admin/guest-groups` editor uses, so no Supabase client logic is duplicated
- * in the browser and no service-role key is ever shipped to the client.
+ * panel posts to the shared `updateGuestGroupAction`, so no Supabase client
+ * logic is duplicated in the browser and no service-role key is ever shipped to
+ * the client.
  *
  * "Enviada" toggle: there is NO `sent`/`sent_at` column on `guest_groups` or
  * `rsvps` in the current schema (see `supabase/migrations/`), so this slice
@@ -65,8 +65,8 @@ import type { AdminGuestGroup } from "@/lib/admin-overview";
  * stats/status badge refresh from persisted data; clearing `assignedSeats`
  * therefore naturally flips the card to "Sin lugares" and disables copy
  * (driven by the post-save data, not by local state). The delete action also
- * revalidates the unified list and legacy admin paths, so on success the card
- * simply disappears from `/admin/confirmaciones` (the data boundary lists
+ * revalidates the unified list, so on success the card simply disappears from
+ * `/admin/confirmaciones` (the data boundary lists
  * active groups only) while staying reactivate-able later via
  * `Nueva invitación`.
  */
@@ -79,10 +79,10 @@ export default function ConfirmationsView({
   const sortId = useId();
   const filterId = useId();
 
-  // Reuse the SAME guest-group update Server Action the
-  // `/admin/guest-groups` editor uses — this keeps the service-role key and all
-  // Supabase access on the server (the action re-verifies auth before writing)
-  // and avoids forking a second mutation surface. The action's `slug`-keyed
+  // Reuse the shared guest-group update Server Action — this keeps the
+  // service-role key and all Supabase access on the server (the action
+  // re-verifies auth before writing) and avoids forking a second mutation
+  // surface. The action's `slug`-keyed
   // `GuestGroupFormState` is fanned back out here so only the card whose hidden
   // `slug` matches shows the success/error feedback.
   const [formState, formAction] = useActionState(

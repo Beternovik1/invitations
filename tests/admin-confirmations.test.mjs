@@ -631,10 +631,9 @@ test("the shared module stays client-safe: no server-only or Supabase import", a
 test("modificar: the view reuses the existing guest-group update Server Action (no second mutation surface, no client-side Supabase)", async () => {
   const view = await readSrc(VIEW);
 
-  // The view MUST import the SHARED action that the `/admin/guest-groups`
-  // editor already uses — this is the slice's reuse contract: no new Server
-  // Action, no new boundary, no duplicated unsafe Supabase client in the
-  // browser.
+  // The view MUST import the shared guest-group action module — this is the
+  // slice's reuse contract: no extra client-side mutation surface and no
+  // duplicated unsafe Supabase client in the browser.
   assert.match(
     view,
     /from "@\/app\/admin\/\(dashboard\)\/guest-groups\/actions"/,
@@ -798,21 +797,27 @@ test("nueva invitación: the create action is the create boundary (no client-sid
   );
 });
 
-test("nueva invitación: the create action revalidates `/admin/confirmaciones` and `/admin/guest-groups` on success", async () => {
+test("nueva invitación: the create action revalidates `/admin/confirmaciones` on success", async () => {
   const action = await readSrc(ACTION);
 
-  // The create action must revalidate both admin surfaces so the new/
-  // reactivated card appears on /admin/confirmaciones and the editor list
-  // reflects the new row.
+  // The create action must revalidate the official Confirmaciones surface so
+  // the new/reactivated card appears. The legacy `/admin/guest-groups` route
+  // is now a redirect stub, so it must NOT be revalidated — revalidating a
+  // redirect would keep a meaningless reference alive.
   assert.match(
     action,
     /revalidatePath\("\/admin\/confirmaciones"\)/,
     "create action must revalidate `/admin/confirmaciones` on success"
   );
-  assert.match(
+  assert.doesNotMatch(
     action,
     /revalidatePath\("\/admin\/guest-groups"\)/,
-    "create action must revalidate `/admin/guest-groups` on success"
+    "create action must NOT revalidate the legacy `/admin/guest-groups` (now a redirect)"
+  );
+  assert.doesNotMatch(
+    action,
+    /revalidatePath\("\/admin\/rsvps"\)/,
+    "create action must NOT revalidate the legacy `/admin/rsvps` (now a redirect)"
   );
   // And it must call the create boundary (not reuse the update boundary).
   assert.match(

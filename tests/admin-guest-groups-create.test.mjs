@@ -379,7 +379,6 @@ test("action: `createGuestGroupAction` parses displayName + assignedSeats the sa
 
 const VIEW =
   "src/app/admin/(dashboard)/confirmaciones/ConfirmationsView.tsx";
-const EDITOR = "src/app/admin/(dashboard)/guest-groups/GuestGroupEditor.tsx";
 
 test("shared module exports the `assigned_seats_too_many` error code so the UI can branch on the cap", async () => {
   const shared = await readSrc(SHARED);
@@ -433,9 +432,9 @@ test("create boundary rejects assignedSeats above the cap with a clear Spanish `
 test("update boundary also rejects assignedSeats above the cap (the modify flow shares the same constant)", async () => {
   const boundary = await readSrc(BOUNDARY);
 
-  // The update path (used by both `/admin/guest-groups` and the confirmaciones
-  // `Modificar` panel) must enforce the SAME cap so the create flow cannot be
-  // bypassed by editing an existing group to a huge number.
+  // The update path used by the confirmaciones `Modificar` panel must enforce
+  // the SAME cap so the create flow cannot be bypassed by editing an existing
+  // group to a huge number.
   const updateIdx = boundary.indexOf("updateGuestGroupForAdmin");
   const updateSlice = boundary.slice(updateIdx);
   assert.match(
@@ -467,20 +466,9 @@ test("client create and modify inputs (confirmaciones) carry the HTML `max` so t
   );
 });
 
-test("the guest-groups editor modify input also carries the shared `max` (single constant across surfaces)", async () => {
-  const editor = await readSrc(EDITOR);
-
-  // The editor reuses the SAME constant so a host editing from
-  // `/admin/guest-groups` cannot assign more seats than the confirmaciones
-  // create flow allows.
-  assert.match(
-    editor,
-    /MAX_ASSIGNED_SEATS,/,
-    "editor must import MAX_ASSIGNED_SEATS from the shared module"
-  );
-  assert.match(
-    editor,
-    /max=\{MAX_ASSIGNED_SEATS\}/,
-    "editor assignedSeats input must carry `max={MAX_ASSIGNED_SEATS}`"
-  );
-});
+// The legacy `/admin/guest-groups` editor (`GuestGroupEditor.tsx`) was removed
+// when Confirmaciones became the single official admin route — its inline
+// `Modificar` panel now covers the same update flow. There is therefore no
+// separate editor surface left to assert the shared `max` cap against; the
+// confirmaciones view test above is the single source of truth for the
+// `MAX_ASSIGNED_SEATS` HTML guard.
