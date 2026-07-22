@@ -284,7 +284,7 @@ export default function RsvpSection({
                   className="inline-block cursor-pointer rounded-xl px-10 py-3.5 text-[0.85rem] uppercase tracking-[0.25em] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C7A96A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E6ECF2] disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ ...BASKERVVILLE, backgroundColor: NIGHT, color: IVORY }}
                 >
-                  {pending ? "Guardando…" : "Confirmar"}
+                  {pending ? "Guardando…" : "Confirmar todos"}
                 </button>
               </form>
 
