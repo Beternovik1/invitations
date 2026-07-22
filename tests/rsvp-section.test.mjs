@@ -68,6 +68,14 @@ test("direct Confirmar form submits hidden attendingCount=seats and empty messag
     /<input type="hidden" name="message" value="" \/>/,
     'direct confirm form must submit hidden empty message',
   );
+
+  // The button copy makes the one-tap path clear without relying on a longer
+  // per-family count label that can wrap on mobile.
+  assert.match(
+    src,
+    /\{pending \? "Guardando…" : "Confirmar todos"\}/,
+    "direct confirm button must clearly confirm every assigned seat",
+  );
 });
 
 test("modify form carries the stepper count as hidden attendingCount and uses guarded clamping", async () => {
