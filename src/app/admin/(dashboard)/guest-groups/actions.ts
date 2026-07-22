@@ -7,7 +7,9 @@ import {
   isAdminAuthenticated,
 } from "@/lib/admin-access";
 import {
+  createOrReactivateGuestGroupForAdmin,
   updateGuestGroupForAdmin,
+  type GuestGroupCreateFormState,
   type GuestGroupFormState,
 } from "@/lib/admin-guest-groups";
 import { INITIAL_GUEST_GROUP_FORM_STATE } from "@/lib/admin-guest-groups-shared";
@@ -114,6 +116,87 @@ export async function updateGuestGroupAction(
         code: "unexpected",
         message:
           "Ocurrió un problema al guardar este grupo. Inténtalo de nuevo en un momento.",
+      },
+    };
+  }
+}
+
+/**
+ * Admin guest-group create-or-reactivate Server Action.
+ *
+ * Backs the `Nueva invitación` panel on `/admin/confirmaciones`. The slug is
+ * NOT supplied by the form: it is derived server-side from `displayName` by
+ * the boundary (`slugifyGuestGroupName`), so a tampered client cannot pick the
+ * identifier. Running on the server keeps the service-role key and all
+ * Supabase access off the client.
+ *
+ * Auth is re-verified immediately before the write, mirroring
+ * `updateGuestGroupAction`. The dashboard layout already redirected
+ * unauthenticated visitors, but a Server Action is independently invokable,
+ * so this guard keeps the security decision next to the mutation.
+ *
+ * Returns a structured `GuestGroupCreateFormState` — never throws for expected
+ * validation failures (`createOrReactivateGuestGroupForAdmin` already
+ * converts those into `{ ok: false, error }`). On success it carries back the
+ * freshly created/reactivated slug so the panel can show the resulting
+ * `/i/[slug]` link; `revalidatePath` then refreshes the list so the new card
+ * appears. Only transport-level failures throw; they are caught here and
+ * surfaced as an `error` state so the panel stays usable.
+ */
+export async function createGuestGroupAction(
+  prevState: GuestGroupCreateFormState,
+  formData: FormData
+): Promise<GuestGroupCreateFormState> {
+  // Re-verify auth immediately before any private mutation. Cheap and keeps
+  // the security decision next to the write.
+  if (!isAdminAccessConfigured() || !(await isAdminAuthenticated())) {
+    return {
+      status: "error",
+      error: {
+        code: "unexpected",
+        message:
+          "Tu sesión de administrador expiró. Recarga la página para iniciar sesión de nuevo.",
+      },
+    };
+  }
+
+  const rawDisplayName = formData.get("displayName");
+  const displayName =
+    typeof rawDisplayName === "string" ? rawDisplayName : "";
+
+  const rawAssignedSeats = formData.get("assignedSeats");
+  // Blank -> `null` (pending). Anything else -> Number. `Number("") === 0`
+  // would silently turn blank into 0, so short-circuit the empty string
+  // explicitly (same guard the update action uses).
+  const assignedSeats =
+    rawAssignedSeats == null || rawAssignedSeats === ""
+      ? null
+      : typeof rawAssignedSeats === "string"
+        ? Number(rawAssignedSeats)
+        : Number.NaN;
+
+  try {
+    const result = await createOrReactivateGuestGroupForAdmin({
+      displayName,
+      assignedSeats,
+    });
+    if (result.ok) {
+      // Refresh both admin surfaces so the new/reactivated card appears on
+      // the next render. The public `/i/[slug]` route is force-dynamic, so no
+      // revalidate is needed there. The guest-groups editor lists inactive
+      // rows too, so it must be refreshed alongside the confirmaciones page.
+      revalidatePath("/admin/guest-groups");
+      revalidatePath("/admin/confirmaciones");
+      return { status: "success", slug: result.group.slug };
+    }
+    return { status: "error", error: result.error };
+  } catch {
+    return {
+      status: "error",
+      error: {
+        code: "unexpected",
+        message:
+          "Ocurrió un problema al crear este grupo. Inténtalo de nuevo en un momento.",
       },
     };
   }

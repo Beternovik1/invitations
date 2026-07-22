@@ -3,10 +3,16 @@
 import { useActionState, useId, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { updateGuestGroupAction } from "@/app/admin/(dashboard)/guest-groups/actions";
 import {
+  createGuestGroupAction,
+  updateGuestGroupAction,
+} from "@/app/admin/(dashboard)/guest-groups/actions";
+import {
+  INITIAL_GUEST_GROUP_CREATE_FORM_STATE,
   INITIAL_GUEST_GROUP_FORM_STATE,
+  MAX_ASSIGNED_SEATS,
   MAX_DISPLAY_NAME_LENGTH,
+  slugifyGuestGroupName,
   type GuestGroupFormState,
 } from "@/lib/admin-guest-groups-shared";
 import {
@@ -93,6 +99,14 @@ export default function ConfirmationsView({
   // devices. See the helper copy on each card.
   const [sentSlugs, setSentSlugs] = useState<Set<string>>(new Set());
 
+  // `Nueva invitación` panel. Only one is open at a time. `null` means the
+  // panel is closed; a number is a mount nonce so each open starts a fresh
+  // `useActionState` instance (inside `NewInvitationPanel`) instead of
+  // showing the previous submit's stale success/error state. Toggling closed
+  // unmounts the panel, so the next open initializes from
+  // `INITIAL_GUEST_GROUP_CREATE_FORM_STATE`.
+  const [createOpenNonce, setCreateOpenNonce] = useState<number | null>(null);
+
   const visible = useMemo(() => {
     const byStatus = filterConfirmations(groups, filterKey, sentSlugs);
     const trimmed = query.trim();
@@ -124,9 +138,16 @@ export default function ConfirmationsView({
 
   return (
     <div className="space-y-6">
-      {/* Top insights — the six numbers that drive the host's confirmations
-          loop. All but `Enviados` come from the read-only data boundary; the
+      {/* Top insights — the host's confirmations loop. `Invitaciones totales`
+          is the headline number (how many active invitation/group cards the
+          data boundary returns), shown as a bigger first card above the six
+          supporting metrics so the host sees the size of the list at a glance.
+          All but `Enviados` come from the read-only data boundary; the
           session-local count is shown honestly with its helper copy. */}
+      <HeroSummaryCard
+        label="Invitaciones totales"
+        value={summary.totalGroups}
+      />
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6 sm:gap-3">
         <SummaryCard
           label="Lugares asignados"
@@ -212,6 +233,34 @@ export default function ConfirmationsView({
         </label>
       </div>
 
+      {/* `Nueva invitación`: a normal rounded button (no floating plus) below
+          the search/filter area. Clicking opens an inline card form for a new
+          family invitation. Deliberately placed after the filter row so the
+          host can still see search/filter while the panel is open below. */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() =>
+            setCreateOpenNonce((prev) => (prev ?? 0) + 1)
+          }
+          aria-expanded={createOpenNonce !== null}
+          aria-controls="new-invitation-panel"
+          className="rounded-xl border border-(--color-dusty-teal)/45 bg-(--color-sage)/35 px-4 py-2 text-xs uppercase tracking-[0.16em] text-(--color-ink) transition hover:border-(--color-dusty-teal)"
+        >
+          + Nueva invitación
+        </button>
+      </div>
+
+      {createOpenNonce !== null ? (
+        <NewInvitationPanel
+          key={createOpenNonce}
+          onClose={() => setCreateOpenNonce(null)}
+          onReset={() =>
+            setCreateOpenNonce((prev) => (prev ?? 0) + 1)
+          }
+        />
+      ) : null}
+
       {visible.length === 0 ? (
         <p className="rounded-2xl border border-(--color-glass-border) bg-(--color-glass) px-4 py-5 text-sm text-(--color-ink-dim)">
           {filterKey === "todos"
@@ -253,6 +302,7 @@ export default function ConfirmationsView({
 /* -------------------------------------------------------------------------- */
 
 interface ConfirmationsSummary {
+  totalGroups: number;
   totalAssignedSeats: number;
   totalConfirmedAttending: number;
   groupsConfirmados: number;
@@ -261,6 +311,7 @@ interface ConfirmationsSummary {
 }
 
 function computeSummary(groups: AdminGuestGroup[]): ConfirmationsSummary {
+  const totalGroups = groups.length;
   let totalAssignedSeats = 0;
   let totalConfirmedAttending = 0;
   let groupsConfirmados = 0;
@@ -288,6 +339,7 @@ function computeSummary(groups: AdminGuestGroup[]): ConfirmationsSummary {
   }
 
   return {
+    totalGroups,
     totalAssignedSeats,
     totalConfirmedAttending,
     groupsConfirmados,
@@ -316,6 +368,34 @@ function SummaryCard({
           {hint}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/* The headline insight. `Invitaciones totales` is shown as a bigger first
+   summary card above the six supporting metrics so the host reads the size of
+   the active invitation list before drilling into the per-state breakdown. It
+   counts every card the read-only data boundary returns (active guest groups),
+   so empty / no-RSP / confirmed / declined all count toward the total — the
+   number answers "how many invitations am I managing?", not "how many
+   responded". Kept visually distinct from the small cards via a larger serif
+   numeral and wider padding, while reusing the same `leaf-panel` surface so the
+   function-first admin style is not broken. */
+function HeroSummaryCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="leaf-panel rounded-2xl p-5 sm:p-6">
+      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-(--color-gold-soft)">
+        {label}
+      </p>
+      <p className="mt-2 font-serif text-4xl text-(--color-ink) sm:text-5xl">
+        {value}
+      </p>
     </div>
   );
 }
@@ -500,6 +580,7 @@ function ModifyPanel({
           name="assignedSeats"
           type="number"
           min="0"
+          max={MAX_ASSIGNED_SEATS}
           step="1"
           inputMode="numeric"
           defaultValue={group.assignedSeats ?? ""}
@@ -637,5 +718,163 @@ function SentToggle({
       </button>
       <span className="text-sm text-(--color-ink-dim)">Enviada</span>
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  New invitation panel (create or reactivate)                               */
+/* -------------------------------------------------------------------------- */
+
+/* `Nueva invitación` inline form. The host types a family/group name and an
+   optional seat count; the slug is derived LIVE (client-side preview only)
+   from the name via the shared pure `slugifyGuestGroupName` helper, and the
+   server recomputes it from the submitted name on the action so a tampered
+   preview cannot poison the identifier.
+
+   Lifecycle handled server-side by `createOrReactivateGuestGroupForAdmin`:
+     - no row with the derived slug        -> INSERT
+     - inactive row with the derived slug  -> reactivate (PATCH is_active=true,
+       overwrite display_name + assigned_seats, preserve seats_note)
+     - active row with the derived slug    -> `slug_taken` validation error
+
+   This component owns its own `useActionState` so mounting/unmounting it
+   (toggled by the parent's `createOpenNonce`) resets the form cleanly. The
+   parent keys the panel by the nonce, so "Crear otra" remounts it fresh. */
+function NewInvitationPanel({
+  onClose,
+  onReset,
+}: {
+  onClose: () => void;
+  onReset: () => void;
+}) {
+  const [formState, formAction] = useActionState(
+    createGuestGroupAction,
+    INITIAL_GUEST_GROUP_CREATE_FORM_STATE
+  );
+
+  // Live preview of the derived `/i/[slug]` identifier. Pure: the boundary
+  // recomputes the canonical slug on the server, so this is advisory only.
+  const [displayName, setDisplayName] = useState("");
+  const previewSlug = slugifyGuestGroupName(displayName);
+
+  return (
+    <form
+      id="new-invitation-panel"
+      action={formAction}
+      className="leaf-panel space-y-4 rounded-2xl p-4 sm:p-5"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-serif text-lg text-(--color-ink)">
+          Nueva invitación
+        </h3>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="rounded-full border border-(--color-glass-border) bg-(--color-glass) px-2 py-1 text-xs uppercase tracking-[0.14em] text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <label className="block">
+        <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+          Nombre del grupo
+        </span>
+        <input
+          name="displayName"
+          value={displayName}
+          onChange={(event) => setDisplayName(event.target.value)}
+          maxLength={MAX_DISPLAY_NAME_LENGTH}
+          required
+          autoComplete="off"
+          placeholder="Ej. Familia García"
+          className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-3 py-2 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60"
+        />
+        {formState.status === "error" &&
+        formState.error.fields?.displayName ? (
+          <span className="mt-1 block text-xs text-red-700">
+            {formState.error.fields.displayName}
+          </span>
+        ) : null}
+      </label>
+
+      {/* Live slug preview. Read-only, advisory: the server recomputes the
+          real slug from the submitted name. Empty while the host has not
+          typed any letter/digit. */}
+      <div className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2">
+        <p className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+          Enlace de invitación
+        </p>
+        <p className="mt-1 truncate font-mono text-xs text-(--color-ink-dim)">
+          {previewSlug
+            ? `/i/${previewSlug}`
+            : "Aparecerá al escribir el nombre."}
+        </p>
+      </div>
+
+      <label className="block">
+        <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+          Lugares asignados
+        </span>
+        <input
+          name="assignedSeats"
+          type="number"
+          min="0"
+          max={MAX_ASSIGNED_SEATS}
+          step="1"
+          inputMode="numeric"
+          placeholder="Por confirmar"
+          className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-3 py-2 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60"
+        />
+        {formState.status === "error" &&
+        formState.error.fields?.assignedSeats ? (
+          <span className="mt-1 block text-xs text-red-700">
+            {formState.error.fields.assignedSeats}
+          </span>
+        ) : null}
+      </label>
+
+      {formState.status === "success" ? (
+        <div className="rounded-xl border border-(--color-dusty-teal)/35 bg-(--color-sage)/35 px-3 py-2.5 text-sm text-(--color-ink)">
+          <p>Invitación creada. El enlace está listo:</p>
+          <p className="mt-1 truncate font-mono text-xs text-(--color-ink-dim)">
+            {`/i/${formState.slug}`}
+          </p>
+        </div>
+      ) : null}
+
+      {formState.status === "error" ? (
+        <p className="rounded-xl border border-(--color-gold)/40 bg-(--color-pale-yellow-green)/35 px-3 py-2 text-sm text-(--color-ink)">
+          {formState.error.message}
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap justify-end gap-2">
+        {formState.status === "success" ? (
+          <button
+            type="button"
+            onClick={onReset}
+            className="rounded-xl border border-(--color-dusty-teal)/45 bg-(--color-sage)/35 px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink) transition hover:border-(--color-dusty-teal)"
+          >
+            Crear otra
+          </button>
+        ) : null}
+        <CreateButton />
+      </div>
+    </form>
+  );
+}
+
+function CreateButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-4 py-2 text-xs uppercase tracking-[0.16em] text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {pending ? "Creando…" : "Crear invitación"}
+    </button>
   );
 }

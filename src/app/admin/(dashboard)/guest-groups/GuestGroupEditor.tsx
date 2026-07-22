@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { updateGuestGroupAction } from "@/app/admin/(dashboard)/guest-groups/actions";
 import {
   INITIAL_GUEST_GROUP_FORM_STATE,
+  MAX_ASSIGNED_SEATS,
   MAX_DISPLAY_NAME_LENGTH,
   MAX_SEATS_NOTE_LENGTH,
   type GuestGroupFormState,
@@ -267,6 +268,7 @@ function GuestGroupForm({
               name="assignedSeats"
               type="number"
               min="0"
+              max={MAX_ASSIGNED_SEATS}
               step="1"
               inputMode="numeric"
               defaultValue={group.assignedSeats ?? ""}

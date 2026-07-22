@@ -327,6 +327,112 @@ export async function updateGuestGroupInSupabase(
 }
 
 /**
+ * Find a guest group by slug REGARDLESS of `is_active` state.
+ *
+ * Unlike `fetchGuestGroupBySlugFromSupabase` (which returns `null` for inactive
+ * rows so the public `/i/[slug]` route treats them as not found), this helper
+ * is used by the admin create/reactivate flow: an inactive row with the derived
+ * slug is a reactivation candidate, not a miss, so the boundary must see it.
+ *
+ * Returns the full row (including `is_active`) so the boundary can branch on
+ * active vs. inactive. `null` means the slug is genuinely unused.
+ */
+export async function findGuestGroupBySlugIncludingInactiveFromSupabase(
+  slug: string
+): Promise<GuestGroup | null> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${REST_PATH}` +
+    `?slug=eq.${encodeURIComponent(slug)}` +
+    `&select=${COLUMNS}` +
+    `&limit=1`;
+
+  const res = await fetch(url, {
+    headers: authHeaders(serviceRoleKey),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase lookup for guest group "${slug}" failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: GuestGroupRow[] = await res.json();
+  const row = rows[0];
+  if (!row) return null;
+  return mapRow(row);
+}
+
+/** Input for inserting a new guest group by slug. Snake-cased fields mirror
+ *  the DB schema; the boundary validates before calling. `is_active` is
+ *  always `true` on create (the only way a row becomes inactive is via the
+ *  admin update/delete flow). */
+export interface GuestGroupInsertInput {
+  displayName: string;
+  assignedSeats: number | null;
+  seatsNote: string | null;
+}
+
+/**
+ * Insert a new guest group.
+ *
+ * The slug is the table's primary key and is supplied by the caller (the
+ * boundary derives it from `displayName` via `slugifyGuestGroupName`), so a
+ * 409/23505 here means a collision the boundary did NOT pre-check for. The
+ * caller is expected to have already used
+ * `findGuestGroupBySlugIncludingInactiveFromSupabase` to branch insert vs.
+ * reactivate; on a race-condition collision we surface the raw error.
+ *
+ * `Prefer: return=representation` plus the `select` query param returns the
+ * inserted row so the caller gets back the persisted values without a second
+ * fetch. Requires the INSERT table privilege (see migration 0004).
+ */
+export async function insertGuestGroupInSupabase(
+  slug: string,
+  input: GuestGroupInsertInput
+): Promise<GuestGroup> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url = `${baseUrl}${REST_PATH}?select=${COLUMNS}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...authHeaders(serviceRoleKey),
+      Prefer: "return=representation",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      slug,
+      display_name: input.displayName,
+      assigned_seats: input.assignedSeats,
+      seats_note: input.seatsNote,
+      is_active: true,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase insert for guest group "${slug}" failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: GuestGroupRow[] = await res.json();
+  const row = rows[0];
+  if (!row) {
+    // PostgREST returns the row when `return=representation` is set; an empty
+    // body here means the insert silently matched nothing (e.g. a triggered
+    // BEFORE INSERT rule), which is unexpected.
+    throw new Error(
+      `Supabase insert for guest group "${slug}" returned no representation.`
+    );
+  }
+  return mapRow(row);
+}
+
+/**
  * All active guest groups with their RSVP joined in, ascending by slug.
  *
  * Uses PostgREST's embedded resource selection (`select=...,rsvps(...)`) so the

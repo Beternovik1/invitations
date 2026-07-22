@@ -402,6 +402,59 @@ test("top insights expose all six metrics the host asked for, in Spanish", async
   );
 });
 
+test("`Invitaciones totales` is rendered as a bigger hero summary card above the six supporting insights", async () => {
+  const view = await readSrc(VIEW);
+
+  // The hero label the host asked for as the first/bigger summary card.
+  assert.match(
+    view,
+    /Invitaciones totales/,
+    "the headline `Invitaciones totales` insight must be present"
+  );
+
+  // It must be wired to a dedicated hero component, not the small `SummaryCard`
+  // used by the six supporting metrics, so it stays visually bigger.
+  assert.match(
+    view,
+    /HeroSummaryCard/,
+    "the hero insight must render through a dedicated `HeroSummaryCard` component"
+  );
+  assert.match(
+    view,
+    /label="Invitaciones totales"/,
+    "the hero card must be labeled `Invitaciones totales`"
+  );
+  assert.match(
+    view,
+    /value=\{summary\.totalGroups\}/,
+    "the hero card value must come from `summary.totalGroups`"
+  );
+
+  // The summary must expose `totalGroups`, derived from the data boundary
+  // (active guest groups count), so the hero reads the size of the active list.
+  assert.match(
+    view,
+    /const totalGroups = groups\.length/,
+    "`computeSummary` must derive `totalGroups` from `groups.length`"
+  );
+  assert.match(
+    view,
+    /totalGroups,/g,
+    "`totalGroups` must be returned from `computeSummary`"
+  );
+
+  // The hero must render BEFORE the grid of six small cards, so its position
+  // in source encodes "first/bigger" rather than relying on CSS order alone.
+  const heroIdx = view.indexOf("HeroSummaryCard");
+  const gridIdx = view.indexOf(
+    'grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6'
+  );
+  assert.ok(
+    heroIdx > -1 && gridIdx > -1 && heroIdx < gridIdx,
+    "the hero card must appear before the six-card grid in source order"
+  );
+});
+
 test("the view surfaces an explicit status filter (reusing the shared options) and no vague `Ordenar por: Estado` sort label", async () => {
   const view = await readSrc(VIEW);
 
@@ -659,10 +712,194 @@ test("modificar: the inline edit panel only edits displayName + assignedSeats an
     "panel submits the card's slug as a hidden field"
   );
 
-  // The panel MUST NOT expose create/delete scaffolding this slice deliberately
-  // excludes (Eliminar / Nueva invitación are deferred).
+  // The panel MUST NOT expose `Eliminar` (still deferred to a later slice).
+  // `Nueva invitación` is now shipped as its own panel, so it is asserted in
+  // the dedicated `nueva invitación` tests below — here we only lock the
+  // inline Modificar panel against accidentally growing a delete button.
   assert.doesNotMatch(view, /Eliminar/, "this slice does NOT ship `Eliminar` (deferred)");
-  assert.doesNotMatch(view, /Nueva invitación/, "this slice does NOT ship `Nueva invitación` (deferred)");
+});
+
+/* -------------------------------------------------------------------------- */
+/*  Nueva invitación panel                                                     */
+/* -------------------------------------------------------------------------- */
+
+test("nueva invitación: a normal rounded button labeled `+ Nueva invitación` sits below the search/filter area", async () => {
+  const view = await readSrc(VIEW);
+
+  // Label REQUIRED by the host (Spanish copy, with the `+` prefix).
+  assert.match(
+    view,
+    />\s*\+\s*Nueva invitación\s*</,
+    "the `Nueva invitación` button is rendered with the `+` prefix in Spanish"
+  );
+  // It is a type=button (toggle) so it cannot accidentally submit the inline
+  // Modificar form.
+  assert.match(
+    view,
+    /type="button"[\s\S]*?\+\s*Nueva invitación/,
+    "the `Nueva invitación` button is type=button (toggles the panel, never submits)"
+  );
+  // No floating-plus / FAB pattern — must be a normal rounded button class.
+  assert.match(
+    view,
+    /rounded-xl[^]*>\s*\+\s*Nueva invitación/,
+    "the `Nueva invitación` button uses the same rounded style as the other admin buttons (no floating plus)"
+  );
+});
+
+test("nueva invitación: the panel is gated by a single open state (only one create panel at a time)", async () => {
+  const view = await readSrc(VIEW);
+
+  // The parent owns an open nonce; when null the panel unmounts, so its
+  // `useActionState` initializes fresh on each open.
+  assert.match(
+    view,
+    /useState<number \| null>\(null\)/,
+    "the view holds a nullable open-nonce state to gate the create panel"
+  );
+  assert.match(
+    view,
+    /createOpenNonce !== null \?[\s\S]*?NewInvitationPanel/,
+    "the NewInvitationPanel is conditionally rendered from the open nonce"
+  );
+});
+
+test("nueva invitación: the panel mounts its own `useActionState` for the create action (fresh per open)", async () => {
+  const view = await readSrc(VIEW);
+
+  // The create action is imported from the same actions module as the update
+  // action, keeping a single mutation surface. No new client-side Supabase.
+  assert.match(
+    view,
+    /createGuestGroupAction,/,
+    "the view imports `createGuestGroupAction`"
+  );
+  // The panel uses the INITIAL create state (carries no slug), so success/error
+  // feedback does not collide with the update form's slug-keyed fan-out.
+  assert.match(
+    view,
+    /INITIAL_GUEST_GROUP_CREATE_FORM_STATE/,
+    "the create panel initializes from the create-specific initial state"
+  );
+  assert.match(
+    view,
+    /useActionState\(\s*createGuestGroupAction/,
+    "the create panel wires `createGuestGroupAction` through `useActionState`"
+  );
+});
+
+test("nueva invitación: the create action is the create boundary (no client-side Supabase, no service-role env name)", async () => {
+  const view = await readSrc(VIEW);
+
+  assert.doesNotMatch(
+    view,
+    /SUPABASE_SERVICE_ROLE_KEY/,
+    "the view must never reference the service-role env name"
+  );
+  assert.doesNotMatch(
+    view,
+    /@\/lib\/supabase\/server/,
+    "the view must never import the server-only Supabase module"
+  );
+});
+
+test("nueva invitación: the create action revalidates `/admin/confirmaciones` and `/admin/guest-groups` on success", async () => {
+  const action = await readSrc(ACTION);
+
+  // The create action must revalidate both admin surfaces so the new/
+  // reactivated card appears on /admin/confirmaciones and the editor list
+  // reflects the new row.
+  assert.match(
+    action,
+    /revalidatePath\("\/admin\/confirmaciones"\)/,
+    "create action must revalidate `/admin/confirmaciones` on success"
+  );
+  assert.match(
+    action,
+    /revalidatePath\("\/admin\/guest-groups"\)/,
+    "create action must revalidate `/admin/guest-groups` on success"
+  );
+  // And it must call the create boundary (not reuse the update boundary).
+  assert.match(
+    action,
+    /createOrReactivateGuestGroupForAdmin\(/,
+    "create action must call `createOrReactivateGuestGroupForAdmin`"
+  );
+  // The action must re-verify admin auth before the write, mirroring the
+  // update action's guard (Server Actions are independently invokable).
+  assert.match(
+    action,
+    /export async function createGuestGroupAction[\s\S]*?isAdminAuthenticated\(\)/,
+    "create action must re-verify admin auth before mutating"
+  );
+});
+
+test("nueva invitación: the panel only edits `displayName` + `assignedSeats` and shows a live slug preview", async () => {
+  const view = await readSrc(VIEW);
+
+  // Only the two host-facing fields are exposed (no isActive/seatsNote from
+  // the create panel — isActive defaults to true, seatsNote defaults to null
+  // on the server).
+  assert.match(
+    view,
+    /name="displayName"[\s\S]*?name="assignedSeats"/,
+    "the create panel exposes displayName and assignedSeats fields"
+  );
+  // The slug preview is derived live via the shared pure helper. The server
+  // recomputes the canonical slug, so the preview is advisory only.
+  assert.match(
+    view,
+    /const previewSlug = slugifyGuestGroupName\(displayName\)/,
+    "the live slug preview must be computed from the shared pure helper"
+  );
+  // The preview must render the `/i/[slug]` path shape the host will share,
+  // and an empty-state hint when no alphanumerics have been typed.
+  assert.match(
+    view,
+    /\/i\/\$\{previewSlug\}/,
+    "the preview shows the `/i/[slug]` invitation path shape"
+  );
+  assert.match(
+    view,
+    /Aparecerá al escribir el nombre\./,
+    "the preview empty state tells the host the slug will appear after typing"
+  );
+});
+
+test("nueva invitación: success + error feedback is surfaced in Spanish, and `Crear otra` resets the panel fresh", async () => {
+  const view = await readSrc(VIEW);
+
+  // Pending submit feedback.
+  assert.match(view, /Creando…/, "create button shows `Creando…` while submitting");
+  assert.match(view, /Crear invitación/, "create button idle label is `Crear invitación`");
+
+  // Success: a Spanish confirmation plus the resulting `/i/[slug]` link.
+  assert.match(view, /Invitación creada\./, "success feedback is `Invitación creada.`");
+  assert.match(
+    view,
+    /\/i\/\$\{formState\.slug\}/,
+    "success feedback shows the resulting slug's invitation path"
+  );
+
+  // Error: the action's Spanish `error.message` is rendered inline.
+  assert.match(
+    view,
+    /formState\.status === "error" ?\?[\s\S]*?\{formState\.error\.message\}/,
+    "the create panel renders the action's Spanish error message inline"
+  );
+
+  // `Crear otra` remounts the panel via the parent's open nonce so the next
+  // submission starts from the idle state (no stale success/error carried over).
+  assert.match(
+    view,
+    /\bCrear otra\b/,
+    "`Crear otra` button is present on success to reset the panel"
+  );
+  assert.match(
+    view,
+    /onReset=\{\(\) =>[\s\S]*?setCreateOpenNonce\(\(prev\) => \(prev \?\? 0\) \+ 1\)\s*\}/,
+    "`Crear otra` increments the open nonce to remount the panel fresh"
+  );
 });
 
 test("modificar: Spanish pending / success / error feedback is surfaced", async () => {
