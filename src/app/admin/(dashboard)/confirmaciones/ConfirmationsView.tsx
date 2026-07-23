@@ -32,6 +32,12 @@ import {
 } from "@/lib/admin-confirmations-shared";
 import type { AdminGuestGroup } from "@/lib/admin-overview";
 
+const ADMIN_PRIMARY_BUTTON_CLASS =
+  "rounded-xl border border-(--color-admin-navy) bg-(--color-admin-navy) px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-(--color-admin-navy-soft) disabled:cursor-not-allowed disabled:opacity-60";
+
+const ADMIN_SECONDARY_BUTTON_CLASS =
+  "rounded-xl border border-(--color-admin-border) bg-white px-3 py-2 text-sm font-medium text-(--color-ink-dim) transition hover:border-(--color-admin-navy-soft) hover:text-(--color-ink)";
+
 /**
  * Unified Confirmaciones client view — search, sort, one card per
  * family/group with a copy-link action, a manual "Enviada" toggle, and an
@@ -245,7 +251,7 @@ export default function ConfirmationsView({
           }
           aria-expanded={createOpenNonce !== null}
           aria-controls="new-invitation-panel"
-          className="rounded-xl border border-(--color-dusty-teal)/45 bg-(--color-sage)/35 px-4 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-dusty-teal)"
+          className={ADMIN_PRIMARY_BUTTON_CLASS + " px-4"}
         >
           + Nueva invitación
         </button>
@@ -428,7 +434,7 @@ function ConfirmationCard({
     : "—";
 
   return (
-    <article className="leaf-panel rounded-2xl p-4 sm:p-5">
+    <article className="rounded-2xl border border-(--color-admin-border) bg-white p-4 shadow-[0_14px_30px_rgba(36,48,68,0.07)] sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-lg font-semibold tracking-[-0.02em] text-(--color-ink)">
@@ -474,7 +480,7 @@ function ConfirmationCard({
           onClick={() => onToggleEdit(true)}
           disabled={isEditing}
           aria-disabled={isEditing || undefined}
-          className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-3 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+          className={ADMIN_PRIMARY_BUTTON_CLASS}
         >
           Modificar
         </button>
@@ -541,7 +547,7 @@ function ModifyPanel({
 
   return (
     <>
-    <form action={formAction} className="mt-4 space-y-4 border-t border-(--color-glass-border) pt-4">
+      <form action={formAction} className="mt-4 space-y-4 border-t border-(--color-admin-border) pt-4">
       <input type="hidden" name="slug" value={group.slug} />
       {/* Preserve fields this panel does NOT expose, so the shared action does
           not nullify them. See the ConfirmationCard comment for the why. */}
@@ -608,7 +614,7 @@ function ModifyPanel({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2 text-sm font-medium text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
+          className={ADMIN_SECONDARY_BUTTON_CLASS}
         >
           Cancelar
         </button>
@@ -672,7 +678,7 @@ function DeleteControl({
   const deleteError = deleteFeedback?.status === "error";
 
   return (
-    <div className="mt-4 space-y-3 border-t border-(--color-glass-border) pt-4">
+    <div className="mt-4 space-y-3 border-t border-(--color-admin-border) pt-4">
       {confirming ? (
         <form action={deleteAction} className="space-y-3">
           <input type="hidden" name="slug" value={group.slug} />
@@ -695,7 +701,7 @@ function DeleteControl({
                 setConfirming(false);
                 onCancel();
               }}
-              className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2 text-sm font-medium text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
+              className={ADMIN_SECONDARY_BUTTON_CLASS}
             >
               Cancelar
             </button>
@@ -736,7 +742,7 @@ function SaveButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-4 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+      className={ADMIN_PRIMARY_BUTTON_CLASS + " px-4"}
     >
       {pending ? "Guardando…" : "Guardar cambios"}
     </button>
@@ -775,7 +781,7 @@ function CopyLinkButton({
       onClick={copyLink}
       disabled={disabled}
       aria-disabled={disabled || undefined}
-      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-3 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+      className={ADMIN_PRIMARY_BUTTON_CLASS}
     >
       {label}
     </button>
@@ -887,7 +893,7 @@ function NewInvitationPanel({
     <form
       id="new-invitation-panel"
       action={formAction}
-      className="leaf-panel space-y-4 rounded-2xl p-4 sm:p-5"
+      className="space-y-4 rounded-2xl border border-(--color-admin-border) bg-white p-4 shadow-[0_14px_30px_rgba(36,48,68,0.07)] sm:p-5"
     >
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-lg font-semibold tracking-[-0.02em] text-(--color-ink)">
@@ -897,7 +903,7 @@ function NewInvitationPanel({
           type="button"
           onClick={onClose}
           aria-label="Cerrar"
-          className="rounded-full border border-(--color-glass-border) bg-(--color-glass) px-2.5 py-1 text-xs font-medium text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
+          className="rounded-full border border-(--color-admin-border) bg-white px-2.5 py-1 text-xs font-medium text-(--color-ink-dim) transition hover:border-(--color-admin-navy-soft) hover:text-(--color-ink)"
         >
           Cerrar
         </button>
@@ -981,7 +987,7 @@ function NewInvitationPanel({
           <button
             type="button"
             onClick={onReset}
-            className="rounded-xl border border-(--color-dusty-teal)/45 bg-(--color-sage)/35 px-3 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-dusty-teal)"
+            className={ADMIN_SECONDARY_BUTTON_CLASS}
           >
             Crear otra
           </button>
@@ -998,7 +1004,7 @@ function CreateButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-4 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+      className={ADMIN_PRIMARY_BUTTON_CLASS + " px-4"}
     >
       {pending ? "Creando…" : "Crear invitación"}
     </button>
