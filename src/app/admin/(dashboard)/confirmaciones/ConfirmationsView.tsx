@@ -178,7 +178,7 @@ export default function ConfirmationsView({
           request. The status filter replaces the old vague "Estado" sort. */}
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
         <label htmlFor={searchId} className="block">
-          <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+          <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
             Buscar
           </span>
           <input
@@ -192,7 +192,7 @@ export default function ConfirmationsView({
           />
         </label>
         <label htmlFor={filterId} className="block">
-          <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+          <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
             Estado
           </span>
           <select
@@ -211,7 +211,7 @@ export default function ConfirmationsView({
           </select>
         </label>
         <label htmlFor={sortId} className="block">
-          <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+          <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
             Ordenar por
           </span>
           <select
@@ -243,7 +243,7 @@ export default function ConfirmationsView({
           }
           aria-expanded={createOpenNonce !== null}
           aria-controls="new-invitation-panel"
-          className="rounded-xl border border-(--color-dusty-teal)/45 bg-(--color-sage)/35 px-4 py-2 text-xs uppercase tracking-[0.16em] text-(--color-ink) transition hover:border-(--color-dusty-teal)"
+          className="rounded-xl border border-(--color-dusty-teal)/45 bg-(--color-sage)/35 px-4 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-dusty-teal)"
         >
           + Nueva invitación
         </button>
@@ -353,12 +353,12 @@ function SummaryCard({
 }) {
   return (
     <div className="leaf-panel rounded-2xl p-4">
-      <p className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+      <p className="text-xs font-medium text-(--color-ink-dim)">
         {label}
       </p>
-      <p className="mt-1 font-serif text-2xl text-(--color-ink)">{value}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-(--color-ink)">{value}</p>
       {hint ? (
-        <p className="mt-1 text-[0.6rem] uppercase tracking-[0.12em] text-(--color-ink-soft)">
+        <p className="mt-1 text-xs text-(--color-ink-soft)">
           {hint}
         </p>
       ) : null}
@@ -372,7 +372,7 @@ function SummaryCard({
    counts every card the read-only data boundary returns (active guest groups),
    so empty / no-RSP / confirmed / declined all count toward the total — the
    number answers "how many invitations am I managing?", not "how many
-   responded". Kept visually distinct from the small cards via a larger serif
+   responded". Kept visually distinct from the small cards via a larger
    numeral and wider padding, while reusing the same `leaf-panel` surface so the
    function-first admin style is not broken. */
 function HeroSummaryCard({
@@ -384,10 +384,10 @@ function HeroSummaryCard({
 }) {
   return (
     <div className="leaf-panel rounded-2xl p-5 sm:p-6">
-      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-(--color-gold-soft)">
+      <p className="text-xs font-medium text-(--color-ink-dim)">
         {label}
       </p>
-      <p className="mt-2 font-serif text-4xl text-(--color-ink) sm:text-5xl">
+      <p className="mt-2 text-4xl font-semibold tracking-[-0.04em] text-(--color-ink) sm:text-5xl">
         {value}
       </p>
     </div>
@@ -423,10 +423,10 @@ function ConfirmationCard({
     <article className="leaf-panel rounded-2xl p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate font-serif text-lg text-(--color-ink)">
+          <h3 className="truncate text-lg font-semibold tracking-[-0.02em] text-(--color-ink)">
             {group.displayName}
           </h3>
-          <p className="mt-0.5 truncate font-mono text-[0.7rem] text-(--color-ink-dim)">
+          <p className="mt-0.5 truncate text-xs text-(--color-ink-dim)">
             {group.slug}
           </p>
         </div>
@@ -439,7 +439,7 @@ function ConfirmationCard({
 
       <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         <div>
-          <dt className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+          <dt className="text-xs font-medium text-(--color-ink-dim)">
             Lugares asignados
           </dt>
           <dd className="mt-1 text-(--color-ink)">
@@ -447,7 +447,7 @@ function ConfirmationCard({
           </dd>
         </div>
         <div>
-          <dt className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+          <dt className="text-xs font-medium text-(--color-ink-dim)">
             Lugares confirmados
           </dt>
           <dd className="mt-1 text-(--color-ink)">{confirmedLabel}</dd>
@@ -466,7 +466,7 @@ function ConfirmationCard({
           onClick={() => onToggleEdit(true)}
           disabled={isEditing}
           aria-disabled={isEditing || undefined}
-          className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-3 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
         >
           Modificar
         </button>
@@ -545,7 +545,7 @@ function ModifyPanel({
       />
 
       <label className="block">
-        <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+        <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
           Nombre del grupo
         </span>
         <input
@@ -563,7 +563,7 @@ function ModifyPanel({
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+        <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
           Lugares asignados
         </span>
         <input
@@ -600,7 +600,7 @@ function ModifyPanel({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
+          className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2 text-sm font-medium text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
         >
           Cancelar
         </button>
@@ -687,7 +687,7 @@ function DeleteControl({
                 setConfirming(false);
                 onCancel();
               }}
-              className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
+              className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2 text-sm font-medium text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
             >
               Cancelar
             </button>
@@ -699,7 +699,7 @@ function DeleteControl({
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="rounded-xl border border-red-500/40 bg-red-50/60 px-3 py-2 text-xs uppercase tracking-[0.14em] text-red-700 transition hover:border-red-500"
+            className="rounded-xl border border-red-500/40 bg-red-50/60 px-3 py-2 text-sm font-medium text-red-700 transition hover:border-red-500"
           >
             Eliminar
           </button>
@@ -715,7 +715,7 @@ function ConfirmDeleteButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl border border-red-500/50 bg-red-600/90 px-3 py-2 text-xs uppercase tracking-[0.14em] text-white transition hover:border-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+      className="rounded-xl border border-red-500/50 bg-red-600/90 px-3 py-2 text-sm font-medium text-white transition hover:border-red-600 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Eliminando…" : "Eliminar"}
     </button>
@@ -728,7 +728,7 @@ function SaveButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-4 py-2 text-xs uppercase tracking-[0.16em] text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-4 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Guardando…" : "Guardar cambios"}
     </button>
@@ -767,7 +767,7 @@ function CopyLinkButton({
       onClick={copyLink}
       disabled={disabled}
       aria-disabled={disabled || undefined}
-      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-3 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
     >
       {label}
     </button>
@@ -882,21 +882,21 @@ function NewInvitationPanel({
       className="leaf-panel space-y-4 rounded-2xl p-4 sm:p-5"
     >
       <div className="flex items-center justify-between gap-3">
-        <h3 className="font-serif text-lg text-(--color-ink)">
+        <h3 className="text-lg font-semibold tracking-[-0.02em] text-(--color-ink)">
           Nueva invitación
         </h3>
         <button
           type="button"
           onClick={onClose}
           aria-label="Cerrar"
-          className="rounded-full border border-(--color-glass-border) bg-(--color-glass) px-2 py-1 text-xs uppercase tracking-[0.14em] text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
+          className="rounded-full border border-(--color-glass-border) bg-(--color-glass) px-2.5 py-1 text-xs font-medium text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
         >
           Cerrar
         </button>
       </div>
 
       <label className="block">
-        <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+        <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
           Nombre del grupo
         </span>
         <input
@@ -921,10 +921,10 @@ function NewInvitationPanel({
           real slug from the submitted name. Empty while the host has not
           typed any letter/digit. */}
       <div className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2">
-        <p className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+        <p className="text-xs font-medium text-(--color-ink-dim)">
           Enlace de invitación
         </p>
-        <p className="mt-1 truncate font-mono text-xs text-(--color-ink-dim)">
+        <p className="mt-1 truncate text-xs text-(--color-ink-dim)">
           {previewSlug
             ? `/i/${previewSlug}`
             : "Aparecerá al escribir el nombre."}
@@ -932,7 +932,7 @@ function NewInvitationPanel({
       </div>
 
       <label className="block">
-        <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+        <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
           Lugares asignados
         </span>
         <input
@@ -956,7 +956,7 @@ function NewInvitationPanel({
       {formState.status === "success" ? (
         <div className="rounded-xl border border-(--color-dusty-teal)/35 bg-(--color-sage)/35 px-3 py-2.5 text-sm text-(--color-ink)">
           <p>Invitación creada. El enlace está listo:</p>
-          <p className="mt-1 truncate font-mono text-xs text-(--color-ink-dim)">
+          <p className="mt-1 truncate text-xs text-(--color-ink-dim)">
             {`/i/${formState.slug}`}
           </p>
         </div>
@@ -973,7 +973,7 @@ function NewInvitationPanel({
           <button
             type="button"
             onClick={onReset}
-            className="rounded-xl border border-(--color-dusty-teal)/45 bg-(--color-sage)/35 px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink) transition hover:border-(--color-dusty-teal)"
+            className="rounded-xl border border-(--color-dusty-teal)/45 bg-(--color-sage)/35 px-3 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-dusty-teal)"
           >
             Crear otra
           </button>
@@ -990,7 +990,7 @@ function CreateButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-4 py-2 text-xs uppercase tracking-[0.16em] text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-4 py-2 text-sm font-medium text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Creando…" : "Crear invitación"}
     </button>

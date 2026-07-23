@@ -320,7 +320,7 @@ test("the page passes its groups to ConfirmationsView as plain props", async () 
   );
 });
 
-test("the page intro explains status meanings and reminds the host to mark invitations sent", async () => {
+test("the page avoids the old instructional intro block", async () => {
   const page = await readSrc(PAGE);
 
   for (const copy of [
@@ -332,10 +332,10 @@ test("the page intro explains status meanings and reminds the host to mark invit
     "después de mandar",
     "el enlace por WhatsApp",
   ]) {
-    assert.match(
+    assert.doesNotMatch(
       page,
       new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-      `intro copy must include: ${copy}`
+      `page must not reintroduce noisy intro copy: ${copy}`
     );
   }
 });

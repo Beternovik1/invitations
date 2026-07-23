@@ -193,27 +193,27 @@ export default function AdminDashboardChrome({
       <aside
         id={sidebarId}
         className={[
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-(--color-glass-border) bg-(--color-cream-white)/95 backdrop-blur transition-[width,transform] duration-300 ease-in-out motion-reduce:transition-none",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-(--color-admin-navy-hairline) bg-(--color-admin-navy) backdrop-blur transition-[width,transform] duration-300 ease-in-out motion-reduce:transition-none",
           "md:static md:z-30",
           collapsed ? "md:w-[4.5rem]" : "md:w-64",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         ].join(" ")}
       >
         {/* Brand row */}
-        <div className="flex items-center justify-between gap-2 border-b border-(--color-glass-border) px-3 py-4">
+        <div className="flex items-center justify-between gap-2 border-b border-(--color-admin-navy-hairline) px-3 py-4">
           <Link
             href="/admin/confirmaciones"
             onClick={closeMobile}
             className="flex min-w-0 items-center gap-2"
           >
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-(--color-gold)/50 font-serif text-lg leading-none text-(--color-gold-soft)">
-              S
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-(--color-gold)/55 bg-white/5 text-sm font-semibold leading-none tracking-[0.12em] text-(--color-gold-bright)">
+              B
             </span>
             <span className={collapsed ? "md:hidden" : ""}>
-              <span className="block text-[0.65rem] uppercase tracking-[0.32em] text-(--color-gold-soft)">
-                Sarahi XV
+              <span className="block text-[0.65rem] uppercase tracking-[0.32em] text-(--color-gold-bright)/90">
+                Beternovik
               </span>
-              <span className="block font-serif text-base text-(--color-ink)">
+              <span className="block text-sm font-semibold tracking-[0.02em] text-(--color-cream-bright)">
                 Administrador
               </span>
             </span>
@@ -227,7 +227,7 @@ export default function AdminDashboardChrome({
             onClick={() => setCollapsed((c) => !c)}
             aria-label={collapsed ? "Expandir panel" : "Contraer panel"}
             aria-expanded={!collapsed}
-            className="hidden rounded-md border border-(--color-glass-border) p-1.5 text-(--color-ink-dim) transition hover:text-(--color-ink) md:inline-flex"
+            className="hidden rounded-md border border-(--color-admin-navy-hairline) p-1.5 text-(--color-admin-navy-ink) transition hover:text-(--color-cream-bright) md:inline-flex"
           >
             <IconChevron collapsed={collapsed} className="h-4 w-4" />
           </button>
@@ -237,7 +237,7 @@ export default function AdminDashboardChrome({
             type="button"
             onClick={closeMobile}
             aria-label="Cerrar navegación"
-            className="rounded-md border border-(--color-glass-border) p-1.5 text-(--color-ink-dim) md:hidden"
+            className="rounded-md border border-(--color-admin-navy-hairline) p-1.5 text-(--color-admin-navy-ink) md:hidden"
           >
             <IconClose className="h-4 w-4" />
           </button>
@@ -259,11 +259,11 @@ export default function AdminDashboardChrome({
                     title={collapsed ? item.label : undefined}
                     aria-current={active ? "page" : undefined}
                     className={[
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
+                      "flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition",
                       collapsed ? "md:justify-center md:px-2" : "",
                       active
-                        ? "bg-(--color-sage)/45 text-(--color-ink)"
-                        : "text-(--color-ink-dim) hover:bg-(--color-glass) hover:text-(--color-ink)",
+                        ? "bg-(--color-cream-white)/10 text-(--color-cream-bright)"
+                        : "text-(--color-admin-navy-ink) hover:bg-(--color-cream-white)/8 hover:text-(--color-cream-bright)",
                     ].join(" ")}
                   >
                     <item.icon className="h-5 w-5 shrink-0" />
@@ -283,12 +283,12 @@ export default function AdminDashboardChrome({
         </nav>
 
         {/* Sign out */}
-        <div className="border-t border-(--color-glass-border) px-2 py-3">
+        <div className="border-t border-(--color-admin-navy-hairline) px-2 py-3">
           <form action={logoutAction}>
             <button
               type="submit"
               className={[
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-ink-dim) transition hover:bg-(--color-glass) hover:text-(--color-ink)",
+                "flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-(--color-admin-navy-ink) transition hover:bg-(--color-cream-white)/8 hover:text-(--color-cream-bright)",
                 collapsed ? "md:justify-center md:px-2" : "",
               ].join(" ")}
             >
@@ -302,24 +302,24 @@ export default function AdminDashboardChrome({
       {/* Content column */}
       <div className="flex min-h-[100dvh] flex-1 flex-col">
         {/* Mobile top bar — replaces the sidebar on small screens. */}
-        <div className="flex items-center justify-between border-b border-(--color-glass-border) bg-(--color-cream-white)/80 px-4 py-3 backdrop-blur md:hidden">
+        <div className="flex items-center justify-between border-b border-(--color-admin-navy-hairline) bg-(--color-admin-navy) px-4 py-3 backdrop-blur md:hidden">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
             aria-label="Abrir navegación"
             aria-controls={sidebarId}
             aria-expanded={mobileOpen}
-            className="rounded-md border border-(--color-glass-border) p-2 text-(--color-ink-dim)"
+            className="rounded-md border border-(--color-admin-navy-hairline) p-2 text-(--color-admin-navy-ink)"
           >
             <IconMenu className="h-5 w-5" />
           </button>
-          <span className="font-serif text-base text-(--color-ink)">
-            Sarahi XV · Administrador
+          <span className="text-sm font-semibold tracking-[0.02em] text-(--color-cream-bright)">
+            Beternovik Admin
           </span>
           <span className="w-9" aria-hidden="true" />
         </div>
 
-        <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:py-12">
+        <main className="mx-auto w-full max-w-5xl flex-1 px-5 sm:px-6 lg:px-8 py-10 sm:py-12">
           {children}
         </main>
       </div>
