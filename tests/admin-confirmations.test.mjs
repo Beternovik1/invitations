@@ -448,6 +448,16 @@ test("`Invitaciones totales` is rendered as a bigger hero summary card above the
 test("the view surfaces an explicit status filter (reusing the shared options) and no vague `Ordenar por: Estado` sort label", async () => {
   const view = await readSrc(VIEW);
 
+  for (const label of ["Buscar", "Filtrar por estado", "Ordenar"]) {
+    assert.match(
+      view,
+      new RegExp(`>${label}<|>${label}</span>`),
+      `control bar must expose the visible label: ${label}`
+    );
+  }
+  assert.match(view, /<select[\s\S]*id=\{filterId\}/, "status filter must stay a native select");
+  assert.match(view, /<select[\s\S]*id=\{sortId\}/, "sort control must stay a native select");
+
   // The new explicit status filter dropdown reuses the shared `OPTIONS` array
   // (the labels themselves are pinned by the `CONFIRMATION_FILTER_OPTIONS`
   // test above, so here we only assert the view wires the dropdown in and no

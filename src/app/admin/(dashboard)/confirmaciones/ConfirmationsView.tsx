@@ -38,6 +38,12 @@ const ADMIN_PRIMARY_BUTTON_CLASS =
 const ADMIN_SECONDARY_BUTTON_CLASS =
   "rounded-xl border border-(--color-admin-border) bg-white px-3 py-2 text-sm font-medium text-(--color-ink-dim) transition hover:border-(--color-admin-navy-soft) hover:text-(--color-ink)";
 
+const ADMIN_FIELD_CLASS =
+  "w-full rounded-xl border border-(--color-admin-border) bg-white px-4 py-2.5 text-sm text-(--color-ink) shadow-sm outline-none transition focus:border-(--color-admin-navy-soft) focus:ring-2 focus:ring-(--color-admin-navy)/10";
+
+const ADMIN_FIELD_LABEL_CLASS =
+  "mb-1.5 block text-xs font-medium text-(--color-ink-dim)";
+
 /**
  * Unified Confirmaciones client view — search, sort, one card per
  * family/group with a copy-link action, a manual "Enviada" toggle, and an
@@ -184,59 +190,55 @@ export default function ConfirmationsView({
 
       {/* Search + status filter + sort — after the insights, per the host's
           request. The status filter replaces the old vague "Estado" sort. */}
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-        <label htmlFor={searchId} className="block">
-          <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
-            Buscar
-          </span>
-          <input
-            id={searchId}
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por nombre o identificador"
-            autoComplete="off"
-            className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-4 py-2.5 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60"
-          />
-        </label>
-        <label htmlFor={filterId} className="block">
-          <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
-            Estado
-          </span>
-          <select
-            id={filterId}
-            value={filterKey}
-            onChange={(event) =>
-              setFilterKey(event.target.value as ConfirmationFilterKey)
-            }
-            className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-4 py-2.5 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60 sm:w-auto"
-          >
-            {CONFIRMATION_FILTER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label htmlFor={sortId} className="block">
-          <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
-            Ordenar por
-          </span>
-          <select
-            id={sortId}
-            value={sortKey}
-            onChange={(event) =>
-              setSortKey(event.target.value as ConfirmationSortKey)
-            }
-            className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-4 py-2.5 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60 sm:w-auto"
-          >
-            {CONFIRMATION_SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="rounded-2xl border border-(--color-admin-border) bg-white/75 p-3 shadow-[0_14px_30px_rgba(36,48,68,0.06)] sm:p-4">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+          <label htmlFor={searchId} className="block">
+            <span className={ADMIN_FIELD_LABEL_CLASS}>Buscar</span>
+            <input
+              id={searchId}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar por nombre o identificador"
+              autoComplete="off"
+              className={ADMIN_FIELD_CLASS}
+            />
+          </label>
+          <label htmlFor={filterId} className="block">
+            <span className={ADMIN_FIELD_LABEL_CLASS}>Filtrar por estado</span>
+            <select
+              id={filterId}
+              value={filterKey}
+              onChange={(event) =>
+                setFilterKey(event.target.value as ConfirmationFilterKey)
+              }
+              className={ADMIN_FIELD_CLASS + " sm:w-auto"}
+            >
+              {CONFIRMATION_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor={sortId} className="block">
+            <span className={ADMIN_FIELD_LABEL_CLASS}>Ordenar</span>
+            <select
+              id={sortId}
+              value={sortKey}
+              onChange={(event) =>
+                setSortKey(event.target.value as ConfirmationSortKey)
+              }
+              className={ADMIN_FIELD_CLASS + " sm:w-auto"}
+            >
+              {CONFIRMATION_SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       {/* `Nueva invitación`: a normal rounded button (no floating plus) below
