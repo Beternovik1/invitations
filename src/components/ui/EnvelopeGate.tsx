@@ -94,7 +94,7 @@ export default function EnvelopeGate({ group, children }: EnvelopeGateProps) {
             key="envelope-scene"
             aria-label={`Sobre de invitación para ${group.displayName}`}
             className="relative isolate flex min-h-[100dvh] w-full flex-col items-center justify-center overflow-hidden px-0 py-0 sm:px-6 sm:py-10"
-            initial={{ opacity: 0 }}
+            initial={false}
             animate={{ opacity: 1 }}
             // The whole scene lifts and fades as the invitation appears beneath.
             // `pointerEvents: none` once opened keeps the exiting envelope from
@@ -111,7 +111,7 @@ export default function EnvelopeGate({ group, children }: EnvelopeGateProps) {
 
             <motion.div
               className="relative z-10 h-[100dvh] sm:h-[90dvh] md:h-[84dvh] lg:h-[82dvh]"
-              initial={{ opacity: 0, y: 26, scale: 0.96 }}
+              initial={false}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.7, ease: EASE }}
               style={{ perspective: 1200 }}

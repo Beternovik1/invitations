@@ -30,7 +30,7 @@ const baskervville = localFont({
 // shift. Labels inside that section stay in the serif face for legibility;
 // this face owns the names and the ceremonial lines.
 const edwardianScript = localFont({
-  src: "../../fonts/edwardianscriptitc.ttf",
+  src: "../../fonts/edwardianscriptitc.woff2",
   variable: "--font-edwardian-script",
   display: "swap",
 });
