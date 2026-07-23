@@ -143,35 +143,37 @@ export default function ConfirmationsView({
           supporting metrics so the host sees the size of the list at a glance.
           All metrics come from the server-loaded data boundary, including
           persisted `sent_at` for `Invitaciones enviadas`. */}
-      <HeroSummaryCard
-        label="Invitaciones totales"
-        value={summary.totalGroups}
-      />
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6 sm:gap-3">
-        <SummaryCard
-          label="Lugares asignados"
-          value={summary.totalAssignedSeats}
+      <div className="rounded-[1.75rem] border border-(--color-admin-border) bg-white/50 p-3 shadow-[0_18px_40px_rgba(36,48,68,0.08)] sm:p-4">
+        <HeroSummaryCard
+          label="Invitaciones totales"
+          value={summary.totalGroups}
         />
-        <SummaryCard
-          label="Invitados confirmados"
-          value={summary.totalConfirmedAttending}
-        />
-        <SummaryCard
-          label="Invitaciones confirmadas"
-          value={summary.groupsConfirmados}
-        />
-        <SummaryCard
-          label="Invitaciones sin respuesta"
-          value={summary.groupsSinRespuesta}
-        />
-        <SummaryCard
-          label="Invitaciones enviadas"
-          value={enviadosCount}
-        />
-        <SummaryCard
-          label="Invitaciones sin lugares asignados"
-          value={summary.groupsSinLugares}
-        />
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <SummaryCard
+            label="Lugares asignados"
+            value={summary.totalAssignedSeats}
+          />
+          <SummaryCard
+            label="Invitados confirmados"
+            value={summary.totalConfirmedAttending}
+          />
+          <SummaryCard
+            label="Invitaciones confirmadas"
+            value={summary.groupsConfirmados}
+          />
+          <SummaryCard
+            label="Invitaciones sin respuesta"
+            value={summary.groupsSinRespuesta}
+          />
+          <SummaryCard
+            label="Invitaciones enviadas"
+            value={enviadosCount}
+          />
+          <SummaryCard
+            label="Invitaciones sin lugares asignados"
+            value={summary.groupsSinLugares}
+          />
+        </div>
       </div>
 
       {/* Search + status filter + sort — after the insights, per the host's
@@ -352,11 +354,11 @@ function SummaryCard({
   hint?: string;
 }) {
   return (
-    <div className="leaf-panel rounded-2xl p-4">
-      <p className="text-xs font-medium text-(--color-ink-dim)">
+    <div className="rounded-2xl border border-(--color-admin-border) bg-white/60 p-3.5 sm:p-4">
+      <p className="text-xs font-medium leading-snug text-(--color-ink-dim)">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-(--color-ink)">{value}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-(--color-ink)">{value}</p>
       {hint ? (
         <p className="mt-1 text-xs text-(--color-ink-soft)">
           {hint}
@@ -373,8 +375,7 @@ function SummaryCard({
    so empty / no-RSP / confirmed / declined all count toward the total — the
    number answers "how many invitations am I managing?", not "how many
    responded". Kept visually distinct from the small cards via a larger
-   numeral and wider padding, while reusing the same `leaf-panel` surface so the
-   function-first admin style is not broken. */
+   numeral, wider padding, and a white admin surface inside the metrics module. */
 function HeroSummaryCard({
   label,
   value,
@@ -383,13 +384,20 @@ function HeroSummaryCard({
   value: number;
 }) {
   return (
-    <div className="leaf-panel rounded-2xl p-5 sm:p-6">
-      <p className="text-xs font-medium text-(--color-ink-dim)">
-        {label}
-      </p>
-      <p className="mt-2 text-4xl font-semibold tracking-[-0.04em] text-(--color-ink) sm:text-5xl">
-        {value}
-      </p>
+    <div className="rounded-[1.35rem] border border-(--color-admin-border) bg-white px-5 py-5 sm:px-6 sm:py-6">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium text-(--color-ink-dim)">
+            {label}
+          </p>
+          <p className="mt-2 text-5xl font-semibold tracking-[-0.055em] text-(--color-ink) sm:text-6xl">
+            {value}
+          </p>
+        </div>
+        <p className="max-w-[8rem] pb-1 text-right text-xs leading-snug text-(--color-ink-soft)">
+          Familias activas en el panel
+        </p>
+      </div>
     </div>
   );
 }

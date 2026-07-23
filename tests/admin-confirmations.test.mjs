@@ -437,10 +437,8 @@ test("`Invitaciones totales` is rendered as a bigger hero summary card above the
 
   // The hero must render BEFORE the grid of six small cards, so its position
   // in source encodes "first/bigger" rather than relying on CSS order alone.
-  const heroIdx = view.indexOf("HeroSummaryCard");
-  const gridIdx = view.indexOf(
-    'grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6'
-  );
+  const heroIdx = view.indexOf('label="Invitaciones totales"');
+  const gridIdx = view.indexOf('label="Lugares asignados"');
   assert.ok(
     heroIdx > -1 && gridIdx > -1 && heroIdx < gridIdx,
     "the hero card must appear before the six-card grid in source order"
