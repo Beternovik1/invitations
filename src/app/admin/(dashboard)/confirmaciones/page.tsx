@@ -49,31 +49,7 @@ export default async function AdminConfirmacionesPage() {
 
   return (
     <section>
-      <AdminPageHeader title="Confirmaciones" eyebrow="administrador" />
-
-      <div className="mb-6 max-w-3xl space-y-3 text-sm leading-relaxed text-(--color-ink-dim)">
-        <p>
-          Vista unificada por familia: copia el enlace de cada grupo, revisa los
-          seis indicadores (lugares, confirmaciones, invitaciones, respuestas,
-          enviadas en esta sesión y sin lugares), filtra por estado y marca
-          &ldquo;Enviada&rdquo; a mano. Desde aquí también modificas, creas y
-          eliminas invitaciones.
-        </p>
-
-        <p>
-          <strong>Estados:</strong> Sin lugares significa que todavía falta
-          asignar lugares; Sin respuesta significa que la invitación tiene
-          lugares pero aún no confirmaron; Enviada significa que marcaste a mano
-          que ya mandaste el enlace; Confirmada significa que ya respondieron
-          con asistentes; Sin asistencia significa que confirmaron que no
-          asistirán.
-        </p>
-
-        <p>
-          Recuerda marcar una invitación como &ldquo;Enviada&rdquo; después de mandar
-          el enlace por WhatsApp, para llevar control de cuáles ya compartiste.
-        </p>
-      </div>
+      <AdminPageHeader title="Gestión de invitaciones" />
 
       <ConfirmationsView groups={groups} />
     </section>

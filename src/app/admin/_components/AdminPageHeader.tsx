@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
  */
 export default function AdminPageHeader({
   title,
-  eyebrow = "administrador",
+  eyebrow,
   children,
 }: {
   title: string;
@@ -23,12 +23,14 @@ export default function AdminPageHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className="mb-8 flex items-baseline justify-between gap-4">
+    <header className="mb-8 flex flex-col items-center justify-center gap-4 text-center sm:flex-row sm:justify-center">
       <div>
-        <p className="text-xs uppercase tracking-[0.32em] text-(--color-gold-soft)">
-          Sarahi XV · {eyebrow}
-        </p>
-        <h1 className="mt-2 font-serif text-3xl text-(--color-ink) sm:text-4xl">
+        {eyebrow ? (
+          <p className="text-xs font-medium text-(--color-ink-dim)">
+            {eyebrow}
+          </p>
+        ) : null}
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-(--color-ink) sm:text-4xl">
           {title}
         </h1>
       </div>

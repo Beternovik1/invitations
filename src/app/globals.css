@@ -72,6 +72,18 @@
   --color-glass: rgba(249, 252, 228, 0.5);
   --color-glass-border: rgba(33, 58, 50, 0.22);
 
+  /* Admin-only depth tokens — Beternovik Admin light-first operations console.
+     Restrained navy for the dashboard chrome (sidebar, mobile bar) so the
+     operations panel reads as a professional console distinct from the
+     wedding-cream invitation pages. Additive only: no existing invitation-page
+     token is remapped or overridden, so public invitation visuals are
+     untouched. Gold accents reuse the existing --color-gold family. */
+  --color-admin-navy: #243044;
+  --color-admin-navy-soft: #3a4a5e;
+  --color-admin-navy-ink: rgba(249, 252, 228, 0.72);
+  --color-admin-navy-hairline: rgba(249, 252, 228, 0.16);
+  --color-admin-border: rgba(36, 48, 68, 0.12);
+
   /* Tailwind semantic mapping (consumed as bg-/text- utilities). */
   --color-background: var(--color-cream-white);
   --color-foreground: var(--color-ink);

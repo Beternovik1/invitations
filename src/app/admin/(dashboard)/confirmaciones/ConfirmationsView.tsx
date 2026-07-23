@@ -32,6 +32,18 @@ import {
 } from "@/lib/admin-confirmations-shared";
 import type { AdminGuestGroup } from "@/lib/admin-overview";
 
+const ADMIN_PRIMARY_BUTTON_CLASS =
+  "rounded-xl border border-(--color-admin-navy) bg-(--color-admin-navy) px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-(--color-admin-navy-soft) disabled:cursor-not-allowed disabled:opacity-60";
+
+const ADMIN_SECONDARY_BUTTON_CLASS =
+  "rounded-xl border border-(--color-admin-border) bg-white px-3 py-2 text-sm font-medium text-(--color-ink-dim) transition hover:border-(--color-admin-navy-soft) hover:text-(--color-ink)";
+
+const ADMIN_FIELD_CLASS =
+  "w-full rounded-xl border border-(--color-admin-border) bg-white px-4 py-2.5 text-sm text-(--color-ink) shadow-sm outline-none transition focus:border-(--color-admin-navy-soft) focus:ring-2 focus:ring-(--color-admin-navy)/10";
+
+const ADMIN_FIELD_LABEL_CLASS =
+  "mb-1.5 block text-xs font-medium text-(--color-ink-dim)";
+
 /**
  * Unified Confirmaciones client view — search, sort, one card per
  * family/group with a copy-link action, a manual "Enviada" toggle, and an
@@ -143,92 +155,90 @@ export default function ConfirmationsView({
           supporting metrics so the host sees the size of the list at a glance.
           All metrics come from the server-loaded data boundary, including
           persisted `sent_at` for `Invitaciones enviadas`. */}
-      <HeroSummaryCard
-        label="Invitaciones totales"
-        value={summary.totalGroups}
-      />
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6 sm:gap-3">
-        <SummaryCard
-          label="Lugares asignados"
-          value={summary.totalAssignedSeats}
+      <div className="rounded-[1.75rem] border border-(--color-admin-border) bg-white/50 p-3 shadow-[0_18px_40px_rgba(36,48,68,0.08)] sm:p-4">
+        <HeroSummaryCard
+          label="Invitaciones totales"
+          value={summary.totalGroups}
         />
-        <SummaryCard
-          label="Invitados confirmados"
-          value={summary.totalConfirmedAttending}
-        />
-        <SummaryCard
-          label="Invitaciones confirmadas"
-          value={summary.groupsConfirmados}
-        />
-        <SummaryCard
-          label="Invitaciones sin respuesta"
-          value={summary.groupsSinRespuesta}
-        />
-        <SummaryCard
-          label="Invitaciones enviadas"
-          value={enviadosCount}
-        />
-        <SummaryCard
-          label="Invitaciones sin lugares asignados"
-          value={summary.groupsSinLugares}
-        />
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <SummaryCard
+            label="Lugares asignados"
+            value={summary.totalAssignedSeats}
+          />
+          <SummaryCard
+            label="Invitados confirmados"
+            value={summary.totalConfirmedAttending}
+          />
+          <SummaryCard
+            label="Invitaciones confirmadas"
+            value={summary.groupsConfirmados}
+          />
+          <SummaryCard
+            label="Invitaciones sin respuesta"
+            value={summary.groupsSinRespuesta}
+          />
+          <SummaryCard
+            label="Invitaciones enviadas"
+            value={enviadosCount}
+          />
+          <SummaryCard
+            label="Invitaciones sin lugares asignados"
+            value={summary.groupsSinLugares}
+          />
+        </div>
       </div>
 
       {/* Search + status filter + sort — after the insights, per the host's
           request. The status filter replaces the old vague "Estado" sort. */}
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-        <label htmlFor={searchId} className="block">
-          <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
-            Buscar
-          </span>
-          <input
-            id={searchId}
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por nombre o identificador"
-            autoComplete="off"
-            className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-4 py-2.5 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60"
-          />
-        </label>
-        <label htmlFor={filterId} className="block">
-          <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
-            Estado
-          </span>
-          <select
-            id={filterId}
-            value={filterKey}
-            onChange={(event) =>
-              setFilterKey(event.target.value as ConfirmationFilterKey)
-            }
-            className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-4 py-2.5 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60 sm:w-auto"
-          >
-            {CONFIRMATION_FILTER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label htmlFor={sortId} className="block">
-          <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
-            Ordenar por
-          </span>
-          <select
-            id={sortId}
-            value={sortKey}
-            onChange={(event) =>
-              setSortKey(event.target.value as ConfirmationSortKey)
-            }
-            className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-4 py-2.5 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60 sm:w-auto"
-          >
-            {CONFIRMATION_SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="rounded-2xl border border-(--color-admin-border) bg-white/75 p-3 shadow-[0_14px_30px_rgba(36,48,68,0.06)] sm:p-4">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+          <label htmlFor={searchId} className="block">
+            <span className={ADMIN_FIELD_LABEL_CLASS}>Buscar</span>
+            <input
+              id={searchId}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar por nombre o identificador"
+              autoComplete="off"
+              className={ADMIN_FIELD_CLASS}
+            />
+          </label>
+          <label htmlFor={filterId} className="block">
+            <span className={ADMIN_FIELD_LABEL_CLASS}>Filtrar por estado</span>
+            <select
+              id={filterId}
+              value={filterKey}
+              onChange={(event) =>
+                setFilterKey(event.target.value as ConfirmationFilterKey)
+              }
+              className={ADMIN_FIELD_CLASS + " sm:w-auto"}
+            >
+              {CONFIRMATION_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor={sortId} className="block">
+            <span className={ADMIN_FIELD_LABEL_CLASS}>Ordenar</span>
+            <select
+              id={sortId}
+              value={sortKey}
+              onChange={(event) =>
+                setSortKey(event.target.value as ConfirmationSortKey)
+              }
+              className={ADMIN_FIELD_CLASS + " sm:w-auto"}
+            >
+              {CONFIRMATION_SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       {/* `Nueva invitación`: a normal rounded button (no floating plus) below
@@ -243,7 +253,7 @@ export default function ConfirmationsView({
           }
           aria-expanded={createOpenNonce !== null}
           aria-controls="new-invitation-panel"
-          className="rounded-xl border border-(--color-dusty-teal)/45 bg-(--color-sage)/35 px-4 py-2 text-xs uppercase tracking-[0.16em] text-(--color-ink) transition hover:border-(--color-dusty-teal)"
+          className={ADMIN_PRIMARY_BUTTON_CLASS + " px-4"}
         >
           + Nueva invitación
         </button>
@@ -352,13 +362,13 @@ function SummaryCard({
   hint?: string;
 }) {
   return (
-    <div className="leaf-panel rounded-2xl p-4">
-      <p className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+    <div className="rounded-2xl border border-(--color-admin-border) bg-white/60 p-3.5 sm:p-4">
+      <p className="text-xs font-medium leading-snug text-(--color-ink-dim)">
         {label}
       </p>
-      <p className="mt-1 font-serif text-2xl text-(--color-ink)">{value}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-(--color-ink)">{value}</p>
       {hint ? (
-        <p className="mt-1 text-[0.6rem] uppercase tracking-[0.12em] text-(--color-ink-soft)">
+        <p className="mt-1 text-xs text-(--color-ink-soft)">
           {hint}
         </p>
       ) : null}
@@ -372,9 +382,8 @@ function SummaryCard({
    counts every card the read-only data boundary returns (active guest groups),
    so empty / no-RSP / confirmed / declined all count toward the total — the
    number answers "how many invitations am I managing?", not "how many
-   responded". Kept visually distinct from the small cards via a larger serif
-   numeral and wider padding, while reusing the same `leaf-panel` surface so the
-   function-first admin style is not broken. */
+   responded". Kept visually distinct from the small cards via a larger
+   numeral, wider padding, and a white admin surface inside the metrics module. */
 function HeroSummaryCard({
   label,
   value,
@@ -383,13 +392,20 @@ function HeroSummaryCard({
   value: number;
 }) {
   return (
-    <div className="leaf-panel rounded-2xl p-5 sm:p-6">
-      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-(--color-gold-soft)">
-        {label}
-      </p>
-      <p className="mt-2 font-serif text-4xl text-(--color-ink) sm:text-5xl">
-        {value}
-      </p>
+    <div className="rounded-[1.35rem] border border-(--color-admin-border) bg-white px-5 py-5 sm:px-6 sm:py-6">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium text-(--color-ink-dim)">
+            {label}
+          </p>
+          <p className="mt-2 text-5xl font-semibold tracking-[-0.055em] text-(--color-ink) sm:text-6xl">
+            {value}
+          </p>
+        </div>
+        <p className="max-w-[8rem] pb-1 text-right text-xs leading-snug text-(--color-ink-soft)">
+          Familias activas en el panel
+        </p>
+      </div>
     </div>
   );
 }
@@ -420,13 +436,13 @@ function ConfirmationCard({
     : "—";
 
   return (
-    <article className="leaf-panel rounded-2xl p-4 sm:p-5">
+    <article className="rounded-2xl border border-(--color-admin-border) bg-white p-4 shadow-[0_14px_30px_rgba(36,48,68,0.07)] sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate font-serif text-lg text-(--color-ink)">
+          <h3 className="truncate text-lg font-semibold tracking-[-0.02em] text-(--color-ink)">
             {group.displayName}
           </h3>
-          <p className="mt-0.5 truncate font-mono text-[0.7rem] text-(--color-ink-dim)">
+          <p className="mt-0.5 truncate text-xs text-(--color-ink-dim)">
             {group.slug}
           </p>
         </div>
@@ -439,7 +455,7 @@ function ConfirmationCard({
 
       <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         <div>
-          <dt className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+          <dt className="text-xs font-medium text-(--color-ink-dim)">
             Lugares asignados
           </dt>
           <dd className="mt-1 text-(--color-ink)">
@@ -447,7 +463,7 @@ function ConfirmationCard({
           </dd>
         </div>
         <div>
-          <dt className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+          <dt className="text-xs font-medium text-(--color-ink-dim)">
             Lugares confirmados
           </dt>
           <dd className="mt-1 text-(--color-ink)">{confirmedLabel}</dd>
@@ -466,7 +482,7 @@ function ConfirmationCard({
           onClick={() => onToggleEdit(true)}
           disabled={isEditing}
           aria-disabled={isEditing || undefined}
-          className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+          className={ADMIN_PRIMARY_BUTTON_CLASS}
         >
           Modificar
         </button>
@@ -533,7 +549,7 @@ function ModifyPanel({
 
   return (
     <>
-    <form action={formAction} className="mt-4 space-y-4 border-t border-(--color-glass-border) pt-4">
+      <form action={formAction} className="mt-4 space-y-4 border-t border-(--color-admin-border) pt-4">
       <input type="hidden" name="slug" value={group.slug} />
       {/* Preserve fields this panel does NOT expose, so the shared action does
           not nullify them. See the ConfirmationCard comment for the why. */}
@@ -545,7 +561,7 @@ function ModifyPanel({
       />
 
       <label className="block">
-        <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+        <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
           Nombre del grupo
         </span>
         <input
@@ -563,7 +579,7 @@ function ModifyPanel({
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+        <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
           Lugares asignados
         </span>
         <input
@@ -600,7 +616,7 @@ function ModifyPanel({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
+          className={ADMIN_SECONDARY_BUTTON_CLASS}
         >
           Cancelar
         </button>
@@ -664,7 +680,7 @@ function DeleteControl({
   const deleteError = deleteFeedback?.status === "error";
 
   return (
-    <div className="mt-4 space-y-3 border-t border-(--color-glass-border) pt-4">
+    <div className="mt-4 space-y-3 border-t border-(--color-admin-border) pt-4">
       {confirming ? (
         <form action={deleteAction} className="space-y-3">
           <input type="hidden" name="slug" value={group.slug} />
@@ -687,7 +703,7 @@ function DeleteControl({
                 setConfirming(false);
                 onCancel();
               }}
-              className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
+              className={ADMIN_SECONDARY_BUTTON_CLASS}
             >
               Cancelar
             </button>
@@ -699,7 +715,7 @@ function DeleteControl({
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="rounded-xl border border-red-500/40 bg-red-50/60 px-3 py-2 text-xs uppercase tracking-[0.14em] text-red-700 transition hover:border-red-500"
+            className="rounded-xl border border-red-500/40 bg-red-50/60 px-3 py-2 text-sm font-medium text-red-700 transition hover:border-red-500"
           >
             Eliminar
           </button>
@@ -715,7 +731,7 @@ function ConfirmDeleteButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl border border-red-500/50 bg-red-600/90 px-3 py-2 text-xs uppercase tracking-[0.14em] text-white transition hover:border-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+      className="rounded-xl border border-red-500/50 bg-red-600/90 px-3 py-2 text-sm font-medium text-white transition hover:border-red-600 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Eliminando…" : "Eliminar"}
     </button>
@@ -728,7 +744,7 @@ function SaveButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-4 py-2 text-xs uppercase tracking-[0.16em] text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+      className={ADMIN_PRIMARY_BUTTON_CLASS + " px-4"}
     >
       {pending ? "Guardando…" : "Guardar cambios"}
     </button>
@@ -767,7 +783,7 @@ function CopyLinkButton({
       onClick={copyLink}
       disabled={disabled}
       aria-disabled={disabled || undefined}
-      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+      className={ADMIN_PRIMARY_BUTTON_CLASS}
     >
       {label}
     </button>
@@ -879,24 +895,24 @@ function NewInvitationPanel({
     <form
       id="new-invitation-panel"
       action={formAction}
-      className="leaf-panel space-y-4 rounded-2xl p-4 sm:p-5"
+      className="space-y-4 rounded-2xl border border-(--color-admin-border) bg-white p-4 shadow-[0_14px_30px_rgba(36,48,68,0.07)] sm:p-5"
     >
       <div className="flex items-center justify-between gap-3">
-        <h3 className="font-serif text-lg text-(--color-ink)">
+        <h3 className="text-lg font-semibold tracking-[-0.02em] text-(--color-ink)">
           Nueva invitación
         </h3>
         <button
           type="button"
           onClick={onClose}
           aria-label="Cerrar"
-          className="rounded-full border border-(--color-glass-border) bg-(--color-glass) px-2 py-1 text-xs uppercase tracking-[0.14em] text-(--color-ink-dim) transition hover:border-(--color-ink-dim)"
+          className="rounded-full border border-(--color-admin-border) bg-white px-2.5 py-1 text-xs font-medium text-(--color-ink-dim) transition hover:border-(--color-admin-navy-soft) hover:text-(--color-ink)"
         >
           Cerrar
         </button>
       </div>
 
       <label className="block">
-        <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+        <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
           Nombre del grupo
         </span>
         <input
@@ -921,10 +937,10 @@ function NewInvitationPanel({
           real slug from the submitted name. Empty while the host has not
           typed any letter/digit. */}
       <div className="rounded-xl border border-(--color-glass-border) bg-(--color-glass) px-3 py-2">
-        <p className="text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+        <p className="text-xs font-medium text-(--color-ink-dim)">
           Enlace de invitación
         </p>
-        <p className="mt-1 truncate font-mono text-xs text-(--color-ink-dim)">
+        <p className="mt-1 truncate text-xs text-(--color-ink-dim)">
           {previewSlug
             ? `/i/${previewSlug}`
             : "Aparecerá al escribir el nombre."}
@@ -932,7 +948,7 @@ function NewInvitationPanel({
       </div>
 
       <label className="block">
-        <span className="mb-1.5 block text-[0.65rem] uppercase tracking-[0.16em] text-(--color-gold-soft)">
+        <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
           Lugares asignados
         </span>
         <input
@@ -956,7 +972,7 @@ function NewInvitationPanel({
       {formState.status === "success" ? (
         <div className="rounded-xl border border-(--color-dusty-teal)/35 bg-(--color-sage)/35 px-3 py-2.5 text-sm text-(--color-ink)">
           <p>Invitación creada. El enlace está listo:</p>
-          <p className="mt-1 truncate font-mono text-xs text-(--color-ink-dim)">
+          <p className="mt-1 truncate text-xs text-(--color-ink-dim)">
             {`/i/${formState.slug}`}
           </p>
         </div>
@@ -973,7 +989,7 @@ function NewInvitationPanel({
           <button
             type="button"
             onClick={onReset}
-            className="rounded-xl border border-(--color-dusty-teal)/45 bg-(--color-sage)/35 px-3 py-2 text-xs uppercase tracking-[0.14em] text-(--color-ink) transition hover:border-(--color-dusty-teal)"
+            className={ADMIN_SECONDARY_BUTTON_CLASS}
           >
             Crear otra
           </button>
@@ -990,7 +1006,7 @@ function CreateButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl border border-(--color-gold)/45 bg-(--color-glass) px-4 py-2 text-xs uppercase tracking-[0.16em] text-(--color-ink) transition hover:border-(--color-gold) disabled:cursor-not-allowed disabled:opacity-60"
+      className={ADMIN_PRIMARY_BUTTON_CLASS + " px-4"}
     >
       {pending ? "Creando…" : "Crear invitación"}
     </button>

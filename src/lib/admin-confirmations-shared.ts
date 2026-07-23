@@ -72,21 +72,19 @@ export const CONFIRMATION_STATUS_LABELS: Record<ConfirmationStatus, string> = {
   sin_asistencia: "Sin asistencia",
 };
 
-/** Tailwind tone classes per status, mirroring the existing RSVP overview's
- *  tone model so the new page reads as the same product. `enviada` reuses the
- *  sage accent the create flow uses, so the host's "I already acted" rows read
- *  as the same calm brand surface the `Guardar`/`Crear` feedback uses. */
+/** Tailwind tone classes per status. Colors stay semantic for quick scanning,
+ *  but use softer admin-dashboard tints so badges sit calmly on white cards. */
 export const CONFIRMATION_STATUS_TONE: Record<ConfirmationStatus, string> = {
   sin_lugares:
-    "bg-(--color-glass) text-(--color-ink-dim) border-(--color-glass-border)",
+    "bg-slate-50 text-slate-600 border-slate-200",
   sin_respuesta:
-    "bg-(--color-pale-yellow-green)/40 text-(--color-ink-dim) border-(--color-gold)/35",
+    "bg-amber-50 text-amber-800 border-amber-200",
   enviada:
-    "bg-(--color-sage)/35 text-(--color-ink) border-(--color-dusty-teal)/35",
+    "bg-blue-50 text-(--color-admin-navy) border-blue-200",
   confirmado:
-    "bg-(--color-sage)/40 text-(--color-ink) border-(--color-dusty-teal)/40",
+    "bg-emerald-50 text-emerald-800 border-emerald-200",
   sin_asistencia:
-    "bg-(--color-mist-blue-deep)/60 text-(--color-ink-dim) border-(--color-dusty-blue)/40",
+    "bg-rose-50 text-rose-800 border-rose-200",
 };
 
 /** Compute the five-state confirmation status for a group. Kept here (not on

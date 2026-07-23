@@ -320,7 +320,7 @@ test("the page passes its groups to ConfirmationsView as plain props", async () 
   );
 });
 
-test("the page intro explains status meanings and reminds the host to mark invitations sent", async () => {
+test("the page avoids the old instructional intro block", async () => {
   const page = await readSrc(PAGE);
 
   for (const copy of [
@@ -332,10 +332,10 @@ test("the page intro explains status meanings and reminds the host to mark invit
     "después de mandar",
     "el enlace por WhatsApp",
   ]) {
-    assert.match(
+    assert.doesNotMatch(
       page,
       new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-      `intro copy must include: ${copy}`
+      `page must not reintroduce noisy intro copy: ${copy}`
     );
   }
 });
@@ -437,10 +437,8 @@ test("`Invitaciones totales` is rendered as a bigger hero summary card above the
 
   // The hero must render BEFORE the grid of six small cards, so its position
   // in source encodes "first/bigger" rather than relying on CSS order alone.
-  const heroIdx = view.indexOf("HeroSummaryCard");
-  const gridIdx = view.indexOf(
-    'grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6'
-  );
+  const heroIdx = view.indexOf('label="Invitaciones totales"');
+  const gridIdx = view.indexOf('label="Lugares asignados"');
   assert.ok(
     heroIdx > -1 && gridIdx > -1 && heroIdx < gridIdx,
     "the hero card must appear before the six-card grid in source order"
@@ -449,6 +447,16 @@ test("`Invitaciones totales` is rendered as a bigger hero summary card above the
 
 test("the view surfaces an explicit status filter (reusing the shared options) and no vague `Ordenar por: Estado` sort label", async () => {
   const view = await readSrc(VIEW);
+
+  for (const label of ["Buscar", "Filtrar por estado", "Ordenar"]) {
+    assert.match(
+      view,
+      new RegExp(`>${label}<|>${label}</span>`),
+      `control bar must expose the visible label: ${label}`
+    );
+  }
+  assert.match(view, /<select[\s\S]*id=\{filterId\}/, "status filter must stay a native select");
+  assert.match(view, /<select[\s\S]*id=\{sortId\}/, "sort control must stay a native select");
 
   // The new explicit status filter dropdown reuses the shared `OPTIONS` array
   // (the labels themselves are pinned by the `CONFIRMATION_FILTER_OPTIONS`
