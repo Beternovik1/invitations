@@ -554,10 +554,10 @@ export async function setGuestGroupSentAtInSupabase(
 /**
  * All active guest groups with their RSVP joined in, ascending by slug.
  *
- * Uses PostgREST's embedded resource selection (`select=...,rsvps(...)`) so the
- * join happens server-side in a single round-trip. Because `rsvps` is the
- * plural table name and `rsvps.guest_group_slug` is the only foreign key into
- * `guest_groups`, PostgREST resolves the embedding name unambiguously.
+ * Uses PostgREST's embedded resource selection with the explicit legacy slug
+ * foreign key (`rsvps!rsvps_guest_group_slug_fkey(...)`) so the join happens
+ * server-side in a single round-trip. The hint works while this is the only
+ * relationship and remains unambiguous when UUID linkage is added alongside it.
  *
  * Inactive groups (`is_active = false`) are excluded — they must not appear in
  * the admin overview. Groups with no RSVP still appear: the embedded `rsvps`
@@ -575,7 +575,7 @@ export async function fetchAllActiveGuestGroupsWithRsvpFromSupabase(): Promise<
   const url =
     `${baseUrl}${REST_PATH}` +
     `?is_active=eq.true` +
-    `&select=${COLUMNS},rsvps(${RSVP_COLUMNS})` +
+    `&select=${COLUMNS},rsvps!rsvps_guest_group_slug_fkey(${RSVP_COLUMNS})` +
     `&order=slug.asc`;
 
   const res = await fetch(url, {
