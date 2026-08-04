@@ -17,9 +17,9 @@ import type { Rsvp } from "@/lib/rsvps";
  * - The service-role key is read from `SUPABASE_SERVICE_ROLE_KEY` (no
  *   NEXT_PUBLIC_ prefix), so Next.js never inlines it into client bundles.
  *
- * No `@supabase/supabase-js` dependency is needed: the boundary only reads
- * guest groups by slug, lists active slugs, and reads/writes a group's RSVP,
- * which the REST API handles with plain `fetch`.
+ * No `@supabase/supabase-js` dependency is needed: the boundary reads guest
+ * groups, keeps legacy slug/link compatibility, and reads/writes RSVP rows with
+ * UUID identity when available, which the REST API handles with plain `fetch`.
  */
 
 const REST_PATH = "/rest/v1/guest_groups";
@@ -596,10 +596,10 @@ export async function setGuestGroupSentAtInSupabase(
 /**
  * All active guest groups with their RSVP joined in, ascending by slug.
  *
- * Uses PostgREST's embedded resource selection with the explicit stable UUID
+ * Uses PostgREST's embedded resource selection with the explicit internal UUID
  * foreign key (`rsvps!rsvps_guest_group_id_fkey(...)`) so the join happens
- * server-side in a single round-trip. Public invitation links and RSVP writes
- * remain slug-based; only this admin read path consumes the UUID relationship.
+ * server-side in a single round-trip. Public invitation links remain slug/token
+ * compatible; admin reads consume the UUID relationship.
  *
  * Inactive groups (`is_active = false`) are excluded — they must not appear in
  * the admin overview. Groups with no RSVP still appear: the embedded `rsvps`
@@ -639,9 +639,10 @@ export async function fetchAllActiveGuestGroupsWithRsvpFromSupabase(): Promise<
 /**
  * Upsert (insert-or-update) a guest group's RSVP.
  *
- * `guest_group_slug` is the table's primary key, so `Prefer:
- * resolution=merge-duplicates` makes PostgREST merge on conflict — exactly the
- * "one RSVP per group, repeat submissions update" semantics the boundary needs.
+ * `guest_group_slug` is still the physical primary key for compatibility, so
+ * `Prefer: resolution=merge-duplicates` preserves repeat-submission semantics.
+ * When a Supabase UUID is available, the body also sends `guest_group_id`, which
+ * is the internal RSVP/guest-group identity used by newer relationships.
  * `return=representation` plus the `select` query param returns the resulting
  * row so the caller gets back `created_at`/`updated_at` without a second fetch.
  *

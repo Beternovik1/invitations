@@ -321,7 +321,7 @@ test("the page passes its groups to ConfirmationsView as plain props", async () 
   );
 });
 
-test("admin confirmations RSVP join uses stable UUID relationship while preserving slug-compatible writes", async () => {
+test("admin confirmations RSVP join uses internal UUID relationship while preserving slug-compatible writes", async () => {
   const server = await readSrc(SUPABASE_SERVER);
   const adminRead = server.slice(
     server.indexOf("export async function fetchAllActiveGuestGroupsWithRsvpFromSupabase"),
@@ -344,7 +344,7 @@ test("admin confirmations RSVP join uses stable UUID relationship while preservi
   assert.match(
     rsvpWrite,
     /const uuidIdentity =\s*groupId && isUuidIdentifier\(groupId\) \? \{ guest_group_id: groupId \} : \{\};[\s\S]*?body:\s*JSON\.stringify\(\{\s*guest_group_slug:\s*slug,\s*\.\.\.uuidIdentity,\s*attending_count:\s*attendingCount,\s*message,?\s*\}\)/,
-    "public RSVP writes must preserve slug identity and include UUID identity when available",
+    "public RSVP writes must preserve slug compatibility and include UUID identity when available",
   );
 });
 

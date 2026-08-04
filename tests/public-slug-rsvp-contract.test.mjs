@@ -56,7 +56,7 @@ test("the public route resolves group by token-capable identifier but reads RSVP
       "if (!group) notFound();",
       "const initialRsvp = await getRsvpBySlug(group.slug);",
     ],
-    "InvitationPage must resolve by identifier but keep RSVP reads slug-keyed",
+    "InvitationPage must resolve by identifier but keep RSVP compatibility reads slug-keyed",
   );
 
   const rsvpSection = sliceBetween(invitationPage, "<RsvpSection", "/>");
@@ -167,7 +167,7 @@ test("the RSVP server boundary re-resolves the group and validates integer range
   );
 });
 
-test("Supabase reads and merging upserts preserve slug identity while writing UUID identity", async () => {
+test("Supabase reads and merging upserts preserve slug compatibility while writing UUID identity", async () => {
   const server = withoutComments(await readSrc(SUPABASE_SERVER));
   const readRsvp = sliceBetween(
     server,
@@ -192,7 +192,7 @@ test("Supabase reads and merging upserts preserve slug identity while writing UU
   assert.match(
     upsertRsvp,
     /const uuidIdentity =\s*groupId && isUuidIdentifier\(groupId\) \? \{ guest_group_id: groupId \} : \{\};[\s\S]*?body:\s*JSON\.stringify\(\{\s*guest_group_slug:\s*slug,\s*\.\.\.uuidIdentity,\s*attending_count:\s*attendingCount,\s*message,?\s*\}\)/,
-    "RSVP upserts must persist the slug identity and include UUID identity when available",
+    "RSVP upserts must persist slug compatibility and include UUID identity when available",
   );
   assert.match(
     migration,
@@ -201,7 +201,7 @@ test("Supabase reads and merging upserts preserve slug identity while writing UU
   );
 });
 
-test("in-place reactivation preserves the slug-keyed RSVP foreign-key target", async () => {
+test("in-place reactivation preserves the legacy RSVP foreign-key target", async () => {
   const boundary = withoutComments(await readSrc(ADMIN_BOUNDARY));
   const reactivation = sliceBetween(
     boundary,

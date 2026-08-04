@@ -23,7 +23,7 @@
 export const MAX_RSVP_MESSAGE_LENGTH = 1000;
 
 export interface Rsvp {
-  /** Guest group slug this RSVP belongs to (primary key in `rsvps`). */
+  /** Legacy guest-group slug retained in the public RSVP payload. */
   guestGroupSlug: string;
   /** How many seats the group confirms. */
   attendingCount: number;
