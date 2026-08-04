@@ -131,13 +131,13 @@ test("0007 preserves the slug PK/FK and the application keeps its slug write con
   );
 });
 
-test("the admin embed explicitly selects the preserved slug FK relationship", async () => {
+test("the admin embed explicitly selects the stable UUID FK relationship", async () => {
   const server = await readSrc(SUPABASE_SERVER);
 
   assert.match(
     server,
-    /rsvps!rsvps_guest_group_slug_fkey\(\$\{RSVP_COLUMNS\}\)/,
-    "the second FK must not make the existing PostgREST embed ambiguous",
+    /rsvps!rsvps_guest_group_id_fkey\(\$\{RSVP_COLUMNS\}\)/,
+    "admin RSVP reads must use the stable UUID FK and keep the PostgREST embed unambiguous",
   );
 });
 

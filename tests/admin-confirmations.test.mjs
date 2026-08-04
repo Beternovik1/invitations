@@ -42,6 +42,7 @@ const VIEW = "src/app/admin/(dashboard)/confirmaciones/ConfirmationsView.tsx";
 const SHARED = "src/lib/admin-confirmations-shared.ts";
 const OVERVIEW_BOUNDARY = "src/lib/admin-overview.ts";
 const ACTION = "src/app/admin/(dashboard)/guest-groups/actions.ts";
+const SUPABASE_SERVER = "src/lib/supabase/server.ts";
 
 /* Helpers copied from the runtime types so the tests stay self-contained. */
 const group = (overrides) => ({
@@ -317,6 +318,33 @@ test("the page passes its groups to ConfirmationsView as plain props", async () 
     page,
     /<ConfirmationsView groups=\{groups\} \/>/,
     "page must pass loaded groups to the client view as serializable props"
+  );
+});
+
+test("admin confirmations RSVP join uses stable UUID relationship without changing slug writes", async () => {
+  const server = await readSrc(SUPABASE_SERVER);
+  const adminRead = server.slice(
+    server.indexOf("export async function fetchAllActiveGuestGroupsWithRsvpFromSupabase"),
+    server.indexOf("export async function upsertRsvpInSupabase"),
+  );
+  const rsvpWrite = server.slice(
+    server.indexOf("export async function upsertRsvpInSupabase"),
+  );
+
+  assert.match(
+    adminRead,
+    /rsvps!rsvps_guest_group_id_fkey\(\$\{RSVP_COLUMNS\}\)/,
+    "admin confirmations read path must join RSVPs through guest_groups.id -> rsvps.guest_group_id",
+  );
+  assert.doesNotMatch(
+    adminRead,
+    /rsvps!rsvps_guest_group_slug_fkey/,
+    "admin confirmations read path must not keep using the legacy slug FK embed",
+  );
+  assert.match(
+    rsvpWrite,
+    /body:\s*JSON\.stringify\(\{\s*guest_group_slug:\s*slug,\s*attending_count:\s*attendingCount,\s*message,?\s*\}\)/,
+    "public RSVP writes must stay slug-based for this slice",
   );
 });
 
