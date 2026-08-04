@@ -874,12 +874,12 @@ test("nueva invitación: success + error feedback is surfaced in Spanish, and `C
   assert.match(view, /Creando…/, "create button shows `Creando…` while submitting");
   assert.match(view, /Crear invitación/, "create button idle label is `Crear invitación`");
 
-  // Success: a Spanish confirmation plus the resulting `/i/[slug]` link.
+  // Success: a Spanish confirmation plus the resulting `/i/[identifier]` link.
   assert.match(view, /Invitación creada\./, "success feedback is `Invitación creada.`");
   assert.match(
     view,
-    /\/i\/\$\{formState\.slug\}/,
-    "success feedback shows the resulting slug's invitation path"
+    /\/i\/\$\{formState\.accessToken \?\? formState\.slug\}/,
+    "success feedback prefers the access token invitation path with slug fallback"
   );
 
   // Error: the action's Spanish `error.message` is rendered inline.
@@ -900,6 +900,28 @@ test("nueva invitación: success + error feedback is surfaced in Spanish, and `C
     view,
     /onReset=\{\(\) =>[\s\S]*?setCreateOpenNonce\(\(prev\) => \(prev \?\? 0\) \+ 1\)\s*\}/,
     "`Crear otra` increments the open nonce to remount the panel fresh"
+  );
+});
+
+test("copy-link action prefers guest_groups.access_token while preserving slug fallback", async () => {
+  const view = await readSrc(VIEW);
+  const server = await readSrc("src/lib/supabase/server.ts");
+  const actions = await readSrc(ACTION);
+
+  assert.match(
+    server,
+    /const COLUMNS =\s*"slug,access_token,display_name,assigned_seats,is_active,seats_note,notes,sent_at";/,
+    "admin overview rows must select guest_groups.access_token"
+  );
+  assert.match(
+    view,
+    /const invitationIdentifier = group\.accessToken \?\? group\.slug;[\s\S]*?const invitationPath = `\/i\/\$\{invitationIdentifier\}`;/,
+    "card copy paths must prefer the random access token and fall back to slug"
+  );
+  assert.match(
+    actions,
+    /accessToken: result\.group\.accessToken,/,
+    "create success state must carry the new row's access token for the shown link"
   );
 });
 

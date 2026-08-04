@@ -42,7 +42,7 @@ const SUPABASE_SERVER = "src/lib/supabase/server.ts";
 const ADMIN_BOUNDARY = "src/lib/admin-guest-groups.ts";
 const RSVP_MIGRATION = "supabase/migrations/0002_create_rsvps.sql";
 
-test("the public route resolves group and RSVP from one route slug and passes both to the RSVP UI", async () => {
+test("the public route resolves group by token-capable identifier but reads RSVP by legacy slug", async () => {
   const page = withoutComments(await readSrc(PAGE));
   const invitationPage = page.slice(
     page.indexOf("export default async function InvitationPage"),
@@ -52,11 +52,11 @@ test("the public route resolves group and RSVP from one route slug and passes bo
     invitationPage,
     [
       "const { slug } = await params;",
-      "const group = await getGuestGroupBySlug(slug);",
+      "const group = await getGuestGroupByIdentifier(slug);",
       "if (!group) notFound();",
-      "const initialRsvp = await getRsvpBySlug(slug);",
+      "const initialRsvp = await getRsvpBySlug(group.slug);",
     ],
-    "InvitationPage must resolve the group and RSVP from one route slug",
+    "InvitationPage must resolve by identifier but keep RSVP reads slug-keyed",
   );
 
   const rsvpSection = sliceBetween(invitationPage, "<RsvpSection", "/>");
@@ -71,8 +71,8 @@ test("missing and inactive public groups become null before mapping, then reach 
   const server = withoutComments(await readSrc(SUPABASE_SERVER));
   const lookup = sliceBetween(
     server,
-    "export async function fetchGuestGroupBySlugFromSupabase",
-    "export async function fetchAllActiveGuestGroupSlugsFromSupabase",
+    "async function fetchSingleGuestGroupByFilterFromSupabase",
+    "export async function fetchGuestGroupByIdentifierFromSupabase",
   );
 
   assertOrdered(
@@ -93,12 +93,37 @@ test("missing and inactive public groups become null before mapping, then reach 
   assertOrdered(
     invitationPage,
     [
-      "const group = await getGuestGroupBySlug(slug);",
+      "const group = await getGuestGroupByIdentifier(slug);",
       "if (!group) notFound();",
-      "const initialRsvp = await getRsvpBySlug(slug);",
+      "const initialRsvp = await getRsvpBySlug(group.slug);",
       "return (",
     ],
     "a null public lookup must stop at notFound before RSVP work or rendering",
+  );
+});
+
+test("Supabase public route lookup checks access_token before legacy slug fallback", async () => {
+  const server = withoutComments(await readSrc(SUPABASE_SERVER));
+  const lookup = sliceBetween(
+    server,
+    "export async function fetchGuestGroupByIdentifierFromSupabase",
+    "export async function fetchGuestGroupBySlugFromSupabase",
+  );
+
+  assertOrdered(
+    lookup,
+    [
+      "if (isUuidIdentifier(identifier))",
+      "`access_token=eq.${encodeURIComponent(identifier)}`",
+      "if (byAccessToken) return byAccessToken;",
+      "return fetchGuestGroupBySlugFromSupabase(identifier);",
+    ],
+    "identifier lookup must prefer access_token and then fall back to legacy slug",
+  );
+  assert.match(
+    server,
+    /function isUuidIdentifier\(identifier: string\): boolean[\s\S]*?\.test\(\s*identifier\s*\)/,
+    "legacy non-UUID slugs must not be sent to a uuid access_token filter before fallback",
   );
 });
 

@@ -2,9 +2,12 @@
  * Guest group data boundary for personalized invitations.
  *
  * This module is the single source of truth the `/i/[slug]` route uses to
- * resolve a guest group. It abstracts WHERE the group comes from so the route
- * and components do not change when the data source gains writes (RSVP, admin
- * editing):
+ * resolve a guest group. The route segment is temporarily treated as an
+ * identifier: Supabase resolves `access_token` first, then falls back to the
+ * legacy slug so existing public links keep working while newly copied admin
+ * links stop exposing human-readable family names. It abstracts WHERE the group
+ * comes from so the route and components do not change when the data source
+ * gains writes (RSVP, admin editing):
  *
  * - When Supabase environment variables are present (`SUPABASE_URL` and
  *   `SUPABASE_SERVICE_ROLE_KEY`), groups are read from the `guest_groups` table
@@ -45,6 +48,9 @@ export interface GuestGroup {
   /** URL-safe identifier used in the `/i/[slug]` route. Stable across renames
    *  of the display name so links keep working when mom edits a label. */
   slug: string;
+  /** Random invitation identifier copied from the admin panel when Supabase is
+   *  configured. Mock entries omit it and keep using slug links. */
+  accessToken?: string;
   /** Name shown on the envelope. A family name or a named invitee. */
   displayName: string;
   /** Seats assigned to this group, or `null` when the count is not yet
@@ -185,12 +191,28 @@ function getAllMockGuestGroupSlugs(): string[] {
 }
 
 /**
- * Resolve a guest group by slug.
+ * Resolve a guest group by public invitation identifier.
  *
- * Returns `null` when the slug is unknown OR the group is inactive, so the
- * route can call `notFound()`. Memoized per request with React `cache` so
+ * In Supabase mode this checks `access_token` first, then legacy `slug` as a
+ * temporary compatibility fallback. RSVP writes still use the resolved group's
+ * `slug`; this lookup only changes how the public route finds the group.
+ * Returns `null` when the identifier is unknown OR the group is inactive, so
+ * the route can call `notFound()`. Memoized per request with React `cache` so
  * `generateMetadata` and the page share a single fetch in Supabase mode.
  */
+export const getGuestGroupByIdentifier = cache(
+  async (identifier: string): Promise<GuestGroup | null> => {
+    if (!isSupabaseConfigured()) {
+      return getMockGuestGroupBySlug(identifier) ?? null;
+    }
+    const { fetchGuestGroupByIdentifierFromSupabase } = await import(
+      "@/lib/supabase/server"
+    );
+    return fetchGuestGroupByIdentifierFromSupabase(identifier);
+  }
+);
+
+/** Resolve a guest group by legacy slug. Kept for RSVP validation/writes. */
 export const getGuestGroupBySlug = cache(
   async (slug: string): Promise<GuestGroup | null> => {
     if (!isSupabaseConfigured()) {

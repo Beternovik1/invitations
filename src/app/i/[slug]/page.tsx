@@ -5,7 +5,10 @@ import EnvelopeGate from "@/components/ui/EnvelopeGate";
 import InvitationContent from "@/components/InvitationContent";
 import RsvpSection from "@/components/sections/Rsvp";
 import { ASSETS, EVENT, SITE } from "@/lib/constants";
-import { getGuestGroupBySlug, isSupabaseConfigured } from "@/lib/guest-groups";
+import {
+  getGuestGroupByIdentifier,
+  isSupabaseConfigured,
+} from "@/lib/guest-groups";
 import { getRsvpBySlug } from "@/lib/rsvps";
 
 /**
@@ -17,8 +20,9 @@ import { getRsvpBySlug } from "@/lib/rsvps";
  * landing page renders — the invitation never forks between entry points.
  *
  * The group is resolved through the guest-group data boundary
- * (`src/lib/guest-groups.ts`), which reads from Supabase when configured and
- * falls back to in-repo mock data otherwise.
+ * (`src/lib/guest-groups.ts`), which treats the route segment as an identifier:
+ * Supabase resolves `access_token` first, then falls back to the legacy slug.
+ * RSVP reads/writes continue to use the resolved group's slug.
  *
  * Rendering mode: `force-dynamic` (per request).
  *
@@ -50,7 +54,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const group = await getGuestGroupBySlug(slug);
+  const group = await getGuestGroupByIdentifier(slug);
   if (!group) return {};
 
   const title = `Invitación para ${group.displayName} · ${SITE.title}`;
@@ -85,7 +89,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function InvitationPage({ params }: Props) {
   const { slug } = await params;
-  const group = await getGuestGroupBySlug(slug);
+  const group = await getGuestGroupByIdentifier(slug);
   // The boundary returns null for unknown slugs AND for inactive (soft-deleted)
   // groups, so both resolve to a 404 here.
   if (!group) notFound();
@@ -95,7 +99,7 @@ export default async function InvitationPage({ params }: Props) {
   // other read in the same request share a single Supabase round-trip. When
   // Supabase is not configured, the boundary returns null (mock mode refuses
   // to pretend a confirmation exists).
-  const initialRsvp = await getRsvpBySlug(slug);
+  const initialRsvp = await getRsvpBySlug(group.slug);
   const rsvpEnabled = isSupabaseConfigured();
 
   return (

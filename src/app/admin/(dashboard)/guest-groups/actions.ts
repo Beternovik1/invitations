@@ -141,10 +141,11 @@ export async function updateGuestGroupAction(
  * Returns a structured `GuestGroupCreateFormState` — never throws for expected
  * validation failures (`createOrReactivateGuestGroupForAdmin` already
  * converts those into `{ ok: false, error }`). On success it carries back the
- * freshly created/reactivated slug so the panel can show the resulting
- * `/i/[slug]` link; `revalidatePath` then refreshes the list so the new card
- * appears. Only transport-level failures throw; they are caught here and
- * surfaced as an `error` state so the panel stays usable.
+ * freshly created/reactivated slug plus access token, when available, so the
+ * panel can show the resulting `/i/[identifier]` link; `revalidatePath` then
+ * refreshes the list so the new card appears. Only transport-level failures
+ * throw; they are caught here and surfaced as an `error` state so the panel
+ * stays usable.
  */
 export async function createGuestGroupAction(
   prevState: GuestGroupCreateFormState,
@@ -190,7 +191,11 @@ export async function createGuestGroupAction(
       // `/admin/guest-groups` route is now a redirect stub, so only the
       // confirmaciones surface needs revalidation.
       revalidatePath("/admin/confirmaciones");
-      return { status: "success", slug: result.group.slug };
+      return {
+        status: "success",
+        slug: result.group.slug,
+        accessToken: result.group.accessToken,
+      };
     }
     return { status: "error", error: result.error };
   } catch {
