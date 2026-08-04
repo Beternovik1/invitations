@@ -25,7 +25,7 @@ import type { Rsvp } from "@/lib/rsvps";
 const REST_PATH = "/rest/v1/guest_groups";
 const RSVP_REST_PATH = "/rest/v1/rsvps";
 const COLUMNS =
-  "slug,access_token,display_name,assigned_seats,is_active,seats_note,notes,sent_at";
+  "id,slug,access_token,display_name,assigned_seats,is_active,seats_note,notes,sent_at";
 
 interface SupabaseConfig {
   baseUrl: string;
@@ -55,6 +55,7 @@ function authHeaders(serviceRoleKey: string): HeadersInit {
 
 /** Row shape returned by the `guest_groups` REST endpoint. */
 interface GuestGroupRow {
+  id: string;
   slug: string;
   access_token: string;
   display_name: string;
@@ -70,6 +71,7 @@ interface GuestGroupRow {
 
 function mapRow(row: GuestGroupRow): GuestGroup {
   return {
+    id: row.id,
     slug: row.slug,
     accessToken: row.access_token,
     displayName: row.display_name,
@@ -648,11 +650,14 @@ export async function fetchAllActiveGuestGroupsWithRsvpFromSupabase(): Promise<
  */
 export async function upsertRsvpInSupabase(
   slug: string,
+  groupId: string | null,
   attendingCount: number,
   message: string | null
 ): Promise<Rsvp> {
   const { baseUrl, serviceRoleKey } = getConfig();
   const url = `${baseUrl}${RSVP_REST_PATH}?select=${RSVP_COLUMNS}`;
+  const uuidIdentity =
+    groupId && isUuidIdentifier(groupId) ? { guest_group_id: groupId } : {};
 
   const res = await fetch(url, {
     method: "POST",
@@ -663,6 +668,7 @@ export async function upsertRsvpInSupabase(
     cache: "no-store",
     body: JSON.stringify({
       guest_group_slug: slug,
+      ...uuidIdentity,
       attending_count: attendingCount,
       message,
     }),

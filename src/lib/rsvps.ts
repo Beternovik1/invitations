@@ -116,6 +116,7 @@ export const getRsvpBySlug = cache(
  */
 export async function submitRsvp(
   slug: string,
+  groupId: string | null,
   input: RsvpInput
 ): Promise<RsvpActionResult> {
   const attendingCount = input.attendingCount;
@@ -156,6 +157,11 @@ export async function submitRsvp(
   }
 
   const { upsertRsvpInSupabase } = await import("@/lib/supabase/server");
-  const rsvp = await upsertRsvpInSupabase(slug, attendingCount, message);
+  const rsvp = await upsertRsvpInSupabase(
+    slug,
+    group.id ?? groupId ?? null,
+    attendingCount,
+    message
+  );
   return { ok: true, rsvp };
 }

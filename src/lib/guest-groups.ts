@@ -45,6 +45,9 @@
 import { cache } from "react";
 
 export interface GuestGroup {
+  /** Stable internal UUID from `guest_groups.id`. Present only in Supabase mode;
+   *  mock entries omit it so zero-config mode never pretends DB identity exists. */
+  id?: string;
   /** URL-safe identifier used in the `/i/[slug]` route. Stable across renames
    *  of the display name so links keep working when mom edits a label. */
   slug: string;
