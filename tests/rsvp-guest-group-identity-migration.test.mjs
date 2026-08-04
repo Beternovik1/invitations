@@ -109,7 +109,7 @@ test("0007 adds unique UUID identity and a cascade FK without promoting it to pr
   );
 });
 
-test("0007 preserves the slug PK/FK and the application keeps its slug write contract", async () => {
+test("0007 preserves the slug PK/FK and the application keeps slug-compatible writes", async () => {
   const original = withoutSqlComments(await readSrc(RSVP_MIGRATION));
   const migration = withoutSqlComments(await readSrc(MIGRATION));
   const server = await readSrc(SUPABASE_SERVER);
@@ -126,8 +126,8 @@ test("0007 preserves the slug PK/FK and the application keeps its slug write con
   );
   assert.match(
     server,
-    /body:\s*JSON\.stringify\(\{\s*guest_group_slug:\s*slug,\s*attending_count:\s*attendingCount,\s*message,?\s*\}\)/,
-    "the application must continue sending slug-only RSVP identity",
+    /const uuidIdentity =\s*groupId && isUuidIdentifier\(groupId\) \? \{ guest_group_id: groupId \} : \{\};[\s\S]*?body:\s*JSON\.stringify\(\{\s*guest_group_slug:\s*slug,\s*\.\.\.uuidIdentity,\s*attending_count:\s*attendingCount,\s*message,?\s*\}\)/,
+    "the application must continue sending slug RSVP identity while adding UUID identity when available",
   );
 });
 

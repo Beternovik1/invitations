@@ -5,10 +5,11 @@ import { submitRsvp, type RsvpFormState } from "@/lib/rsvps";
 /**
  * RSVP Server Action.
  *
- * Bound to a specific guest group slug by the client form with
- * `submitRsvpAction.bind(null, slug)` and consumed via `useActionState`, so the
- * bound signature is `(prevState, formData)` as React expects. Running on the
- * server keeps the service-role key and all Supabase access off the client.
+ * Bound to a specific guest group slug and Supabase UUID by the client form
+ * with `submitRsvpAction.bind(null, slug, groupId)` and consumed via
+ * `useActionState`, so the bound signature is `(prevState, formData)` as React
+ * expects. Running on the server keeps the service-role key and all Supabase
+ * access off the client.
  *
  * Returns a structured `RsvpFormState` — never throws for expected validation
  * failures (`submitRsvp` already converts those into `{ ok: false, error }`).
@@ -17,6 +18,7 @@ import { submitRsvp, type RsvpFormState } from "@/lib/rsvps";
  */
 export async function submitRsvpAction(
   slug: string,
+  groupId: string | null,
   prevState: RsvpFormState,
   formData: FormData
 ): Promise<RsvpFormState> {
@@ -29,7 +31,7 @@ export async function submitRsvpAction(
   const message = typeof rawMessage === "string" ? rawMessage : null;
 
   try {
-    const result = await submitRsvp(slug, { attendingCount, message });
+    const result = await submitRsvp(slug, groupId, { attendingCount, message });
     if (result.ok) {
       return { status: "success", rsvp: result.rsvp };
     }

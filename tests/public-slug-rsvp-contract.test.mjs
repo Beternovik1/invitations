@@ -127,7 +127,7 @@ test("Supabase public route lookup checks access_token before legacy slug fallba
   );
 });
 
-test("the executable RSVP action binding uses group.slug", async () => {
+test("the executable RSVP action binding uses group.slug and group.id", async () => {
   const section = withoutComments(await readSrc(RSVP_SECTION));
   const component = section.slice(
     section.indexOf("export default function RsvpSection"),
@@ -135,8 +135,8 @@ test("the executable RSVP action binding uses group.slug", async () => {
 
   assert.match(
     component,
-    /const boundAction = rsvpEnabled\s*\?\s*submitRsvpAction\.bind\(null, group\.slug\)\s*:\s*null;/,
-    "the live Server Action binding must use the rendered group's slug",
+    /submitRsvpAction\.bind\(null, group\.slug, group\.id \?\? null\)/,
+    "the live Server Action binding must use the rendered group's slug and UUID when present",
   );
   assert.match(
     component,
@@ -158,13 +158,16 @@ test("the RSVP server boundary re-resolves the group and validates integer range
       "!Number.isInteger(attendingCount)",
       "attendingCount < 0",
       "attendingCount > group.assignedSeats",
-      "const rsvp = await upsertRsvpInSupabase(slug, attendingCount, message);",
+      "const rsvp = await upsertRsvpInSupabase(",
+      "slug,",
+      "group.id ?? groupId ?? null",
+      "message\n  );",
     ],
     "group resolution and count validation must precede the RSVP write",
   );
 });
 
-test("Supabase reads and merging upserts use guest_group_slug as the single RSVP row identity", async () => {
+test("Supabase reads and merging upserts preserve slug identity while writing UUID identity", async () => {
   const server = withoutComments(await readSrc(SUPABASE_SERVER));
   const readRsvp = sliceBetween(
     server,
@@ -188,8 +191,8 @@ test("Supabase reads and merging upserts use guest_group_slug as the single RSVP
   );
   assert.match(
     upsertRsvp,
-    /body:\s*JSON\.stringify\(\{\s*guest_group_slug:\s*slug,\s*attending_count:\s*attendingCount,\s*message,?\s*\}\)/,
-    "RSVP upserts must persist the route identity in guest_group_slug",
+    /const uuidIdentity =\s*groupId && isUuidIdentifier\(groupId\) \? \{ guest_group_id: groupId \} : \{\};[\s\S]*?body:\s*JSON\.stringify\(\{\s*guest_group_slug:\s*slug,\s*\.\.\.uuidIdentity,\s*attending_count:\s*attendingCount,\s*message,?\s*\}\)/,
+    "RSVP upserts must persist the slug identity and include UUID identity when available",
   );
   assert.match(
     migration,

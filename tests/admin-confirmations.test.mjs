@@ -321,7 +321,7 @@ test("the page passes its groups to ConfirmationsView as plain props", async () 
   );
 });
 
-test("admin confirmations RSVP join uses stable UUID relationship without changing slug writes", async () => {
+test("admin confirmations RSVP join uses stable UUID relationship while preserving slug-compatible writes", async () => {
   const server = await readSrc(SUPABASE_SERVER);
   const adminRead = server.slice(
     server.indexOf("export async function fetchAllActiveGuestGroupsWithRsvpFromSupabase"),
@@ -343,8 +343,8 @@ test("admin confirmations RSVP join uses stable UUID relationship without changi
   );
   assert.match(
     rsvpWrite,
-    /body:\s*JSON\.stringify\(\{\s*guest_group_slug:\s*slug,\s*attending_count:\s*attendingCount,\s*message,?\s*\}\)/,
-    "public RSVP writes must stay slug-based for this slice",
+    /const uuidIdentity =\s*groupId && isUuidIdentifier\(groupId\) \? \{ guest_group_id: groupId \} : \{\};[\s\S]*?body:\s*JSON\.stringify\(\{\s*guest_group_slug:\s*slug,\s*\.\.\.uuidIdentity,\s*attending_count:\s*attendingCount,\s*message,?\s*\}\)/,
+    "public RSVP writes must preserve slug identity and include UUID identity when available",
   );
 });
 
@@ -938,8 +938,8 @@ test("copy-link action prefers guest_groups.access_token while preserving slug f
 
   assert.match(
     server,
-    /const COLUMNS =\s*"slug,access_token,display_name,assigned_seats,is_active,seats_note,notes,sent_at";/,
-    "admin overview rows must select guest_groups.access_token"
+    /const COLUMNS =\s*"id,slug,access_token,display_name,assigned_seats,is_active,seats_note,notes,sent_at";/,
+    "admin overview rows must select guest_groups.id and access_token"
   );
   assert.match(
     view,

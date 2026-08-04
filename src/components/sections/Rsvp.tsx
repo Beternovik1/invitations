@@ -82,12 +82,13 @@ export default function RsvpSection({
   // The whole section is read-only when seats are pending OR Supabase is off.
   const readonly = seatsPending || !rsvpEnabled;
 
-  // Bind the server action to this group's slug. `useActionState` then calls it
-  // as (prevState, formData). The binding keeps the slug on the server; only
-  // the action reference reaches the client. The SAME action reference is
-  // reused by both the direct-confirm form and the modify form so they share
-  // one state slot.
-  const boundAction = rsvpEnabled ? submitRsvpAction.bind(null, group.slug) : null;
+  // Bind the server action to this group's write identities. `useActionState`
+  // then calls it as (prevState, formData). The binding keeps identifiers on the
+  // server action boundary; only the action reference reaches the client. The
+  // SAME action reference is reused by both forms so they share one state slot.
+  const boundAction = rsvpEnabled
+    ? submitRsvpAction.bind(null, group.slug, group.id ?? null)
+    : null;
 
   const initialState: RsvpFormState = { status: "idle", rsvp: initialRsvp };
   // `useActionState` requires an action; when readonly we pass a no-op sentinel
