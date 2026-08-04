@@ -25,7 +25,7 @@ import type { Rsvp } from "@/lib/rsvps";
 const REST_PATH = "/rest/v1/guest_groups";
 const RSVP_REST_PATH = "/rest/v1/rsvps";
 const COLUMNS =
-  "slug,display_name,assigned_seats,is_active,seats_note,notes,sent_at";
+  "slug,access_token,display_name,assigned_seats,is_active,seats_note,notes,sent_at";
 
 interface SupabaseConfig {
   baseUrl: string;
@@ -56,6 +56,7 @@ function authHeaders(serviceRoleKey: string): HeadersInit {
 /** Row shape returned by the `guest_groups` REST endpoint. */
 interface GuestGroupRow {
   slug: string;
+  access_token: string;
   display_name: string;
   assigned_seats: number | null;
   is_active: boolean;
@@ -70,6 +71,7 @@ interface GuestGroupRow {
 function mapRow(row: GuestGroupRow): GuestGroup {
   return {
     slug: row.slug,
+    accessToken: row.access_token,
     displayName: row.display_name,
     assignedSeats: row.assigned_seats,
     seatsNote: row.seats_note ?? undefined,
@@ -77,6 +79,64 @@ function mapRow(row: GuestGroupRow): GuestGroup {
     isActive: row.is_active,
     sentAt: row.sent_at ?? null,
   };
+}
+
+function isUuidIdentifier(identifier: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    identifier
+  );
+}
+
+async function fetchSingleGuestGroupByFilterFromSupabase(
+  filter: string,
+  errorLabel: string
+): Promise<GuestGroup | null> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${REST_PATH}` +
+    `?${filter}` +
+    `&select=${COLUMNS}` +
+    `&limit=1`;
+
+  const res = await fetch(url, {
+    headers: authHeaders(serviceRoleKey),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase request for guest group "${errorLabel}" failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: GuestGroupRow[] = await res.json();
+  const row = rows[0];
+  if (!row) return null;
+  if (!row.is_active) return null;
+  return mapRow(row);
+}
+
+/**
+ * Fetch a single guest group by public invitation identifier.
+ *
+ * The lookup intentionally checks the random `access_token` first, then falls
+ * back to the legacy slug while old public links remain enabled. Both misses
+ * and inactive rows resolve to `null` so the route preserves its existing 404
+ * behavior.
+ */
+export async function fetchGuestGroupByIdentifierFromSupabase(
+  identifier: string
+): Promise<GuestGroup | null> {
+  if (isUuidIdentifier(identifier)) {
+    const byAccessToken = await fetchSingleGuestGroupByFilterFromSupabase(
+      `access_token=eq.${encodeURIComponent(identifier)}`,
+      identifier
+    );
+    if (byAccessToken) return byAccessToken;
+  }
+
+  return fetchGuestGroupBySlugFromSupabase(identifier);
 }
 
 /**
@@ -92,30 +152,10 @@ function mapRow(row: GuestGroupRow): GuestGroup {
 export async function fetchGuestGroupBySlugFromSupabase(
   slug: string
 ): Promise<GuestGroup | null> {
-  const { baseUrl, serviceRoleKey } = getConfig();
-  const url =
-    `${baseUrl}${REST_PATH}` +
-    `?slug=eq.${encodeURIComponent(slug)}` +
-    `&select=${COLUMNS}` +
-    `&limit=1`;
-
-  const res = await fetch(url, {
-    headers: authHeaders(serviceRoleKey),
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(
-      `Supabase request for guest group "${slug}" failed: ${res.status} ${body}`
-    );
-  }
-
-  const rows: GuestGroupRow[] = await res.json();
-  const row = rows[0];
-  if (!row) return null;
-  if (!row.is_active) return null;
-  return mapRow(row);
+  return fetchSingleGuestGroupByFilterFromSupabase(
+    `slug=eq.${encodeURIComponent(slug)}`,
+    slug
+  );
 }
 
 /**

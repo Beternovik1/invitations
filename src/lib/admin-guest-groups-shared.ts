@@ -166,12 +166,13 @@ export interface AdminGuestGroupCreateInput {
  * Unlike the update form, the create flow has no `slug` to fan feedback by
  * (the slug is derived server-side from the submitted `displayName`), so the
  * state shape is simpler. On success the server returns the freshly created or
- * reactivated slug so the panel can show the resulting `/i/[slug]` link and
- * (after `revalidatePath`) the card appears in the list.
+ * reactivated slug plus the token identifier, when available, so the panel can
+ * show the resulting `/i/[slug]` link and (after `revalidatePath`) the card
+ * appears in the list.
  */
 export type GuestGroupCreateFormState =
   | { status: "idle" }
-  | { status: "success"; slug: string }
+  | { status: "success"; slug: string; accessToken?: string }
   | { status: "error"; error: AdminGuestGroupError };
 
 export const INITIAL_GUEST_GROUP_CREATE_FORM_STATE: GuestGroupCreateFormState = {

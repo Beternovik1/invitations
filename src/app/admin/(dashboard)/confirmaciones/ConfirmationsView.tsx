@@ -55,7 +55,7 @@ const ADMIN_FIELD_LABEL_CLASS =
  * component receiving ALREADY-LOADED data from the Server Component page. No
  * service role, no Supabase URL, no fetch — the page did the read on the
  * server and passed plain serializable props. The copy action composes
- * `window.location.origin` with the safe path (`/i/[slug]`) the page
+ * `window.location.origin` with the safe path (`/i/[identifier]`) the page
  * computed, so the absolute invitation URL the host copies is built
  * client-side from the page origin plus a non-secret path. The `Modificar`
  * panel posts to the shared `updateGuestGroupAction`, so no Supabase client
@@ -430,7 +430,8 @@ function ConfirmationCard({
   const status = confirmationStatusFor(group);
   const hasAssignedSeats = group.assignedSeats != null;
   const sent = group.sentAt != null;
-  const invitationPath = `/i/${group.slug}`;
+  const invitationIdentifier = group.accessToken ?? group.slug;
+  const invitationPath = `/i/${invitationIdentifier}`;
   const confirmedLabel = hasAssignedSeats
     ? `${group.rsvp?.attendingCount ?? 0} de ${group.assignedSeats}`
     : "—";
@@ -861,9 +862,9 @@ function SentToggle({
 
 /* `Nueva invitación` inline form. The host types a family/group name and an
    optional seat count; the slug is derived LIVE (client-side preview only)
-   from the name via the shared pure `slugifyGuestGroupName` helper, and the
-   server recomputes it from the submitted name on the action so a tampered
-   preview cannot poison the identifier.
+   from the name via the shared pure `slugifyGuestGroupName` helper. The
+   server recomputes the legacy slug from the submitted name, then returns the
+   canonical token identifier on success when Supabase is configured.
 
    Lifecycle handled server-side by `createOrReactivateGuestGroupForAdmin`:
      - no row with the derived slug        -> INSERT
@@ -973,7 +974,7 @@ function NewInvitationPanel({
         <div className="rounded-xl border border-(--color-dusty-teal)/35 bg-(--color-sage)/35 px-3 py-2.5 text-sm text-(--color-ink)">
           <p>Invitación creada. El enlace está listo:</p>
           <p className="mt-1 truncate text-xs text-(--color-ink-dim)">
-            {`/i/${formState.slug}`}
+            {`/i/${formState.accessToken ?? formState.slug}`}
           </p>
         </div>
       ) : null}
