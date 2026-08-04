@@ -2,12 +2,12 @@
  * Guest group data boundary for personalized invitations.
  *
  * This module is the single source of truth the `/i/[slug]` route uses to
- * resolve a guest group. The route segment is temporarily treated as an
- * identifier: Supabase resolves `access_token` first, then falls back to the
- * legacy slug so existing public links keep working while newly copied admin
- * links stop exposing human-readable family names. It abstracts WHERE the group
- * comes from so the route and components do not change when the data source
- * gains writes (RSVP, admin editing):
+ * resolve a guest group. Supabase rows carry the internal UUID (`id`) used by
+ * RSVP/admin relationships, while the public route segment remains a link
+ * identifier: `access_token` first, then legacy `slug` fallback so old links
+ * keep working. It abstracts WHERE the group comes from so the route and
+ * components do not change when the data source gains writes (RSVP, admin
+ * editing):
  *
  * - When Supabase environment variables are present (`SUPABASE_URL` and
  *   `SUPABASE_SERVICE_ROLE_KEY`), groups are read from the `guest_groups` table
@@ -48,8 +48,9 @@ export interface GuestGroup {
   /** Stable internal UUID from `guest_groups.id`. Present only in Supabase mode;
    *  mock entries omit it so zero-config mode never pretends DB identity exists. */
   id?: string;
-  /** URL-safe identifier used in the `/i/[slug]` route. Stable across renames
-   *  of the display name so links keep working when mom edits a label. */
+  /** Legacy URL/link identifier used by `/i/[slug]` fallback and compatibility
+   *  reads. It is not the internal RSVP/admin identity when Supabase provides
+   *  `id`. */
   slug: string;
   /** Random invitation identifier copied from the admin panel when Supabase is
    *  configured. Mock entries omit it and keep using slug links. */
@@ -215,7 +216,7 @@ export const getGuestGroupByIdentifier = cache(
   }
 );
 
-/** Resolve a guest group by legacy slug. Kept for RSVP validation/writes. */
+/** Resolve a guest group by legacy slug for RSVP compatibility reads/writes. */
 export const getGuestGroupBySlug = cache(
   async (slug: string): Promise<GuestGroup | null> => {
     if (!isSupabaseConfigured()) {

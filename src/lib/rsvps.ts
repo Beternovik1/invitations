@@ -15,7 +15,9 @@ import {
  * RSVP data boundary for personalized invitations.
  *
  * This module is the single source of truth the `/i/[slug]` route and its Server
- * Action use to read and write a guest group's RSVP. It mirrors the guest-group
+ * Action use to read and write a guest group's RSVP. Supabase writes include the
+ * guest-group UUID when available; slug remains in the contract for existing
+ * links, route shape, and compatibility reads. It mirrors the guest-group
  * boundary (`src/lib/guest-groups.ts`):
  *
  * - When Supabase is configured (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`),

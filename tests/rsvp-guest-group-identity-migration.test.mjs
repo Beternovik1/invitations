@@ -54,7 +54,7 @@ test("0007 adds the nullable UUID, backfills by slug, then installs compatibilit
   );
 });
 
-test("0007 resolves current slug-only inserts and updates to stable UUID identity", async () => {
+test("0007 resolves legacy slug-compatible inserts and updates to internal UUID identity", async () => {
   const migration = withoutSqlComments(await readSrc(MIGRATION));
 
   assert.match(
@@ -122,12 +122,12 @@ test("0007 preserves the slug PK/FK and the application keeps slug-compatible wr
   assert.doesNotMatch(
     migration,
     /drop\s+(column|constraint)|alter\s+column\s+guest_group_slug|rename\s+(column|table)/i,
-    "0007 must not mutate or remove legacy slug identity",
+    "0007 must not mutate or remove legacy slug compatibility",
   );
   assert.match(
     server,
     /const uuidIdentity =\s*groupId && isUuidIdentifier\(groupId\) \? \{ guest_group_id: groupId \} : \{\};[\s\S]*?body:\s*JSON\.stringify\(\{\s*guest_group_slug:\s*slug,\s*\.\.\.uuidIdentity,\s*attending_count:\s*attendingCount,\s*message,?\s*\}\)/,
-    "the application must continue sending slug RSVP identity while adding UUID identity when available",
+    "the application must continue sending slug compatibility while adding UUID identity when available",
   );
 });
 
