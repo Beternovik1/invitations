@@ -47,9 +47,12 @@ test("admin seating page adds table management without drag-and-drop", async () 
   assert.doesNotMatch(view, /name="displayOrder"|Orden|Posición/);
   assert.doesNotMatch(view, /Una mesa|Varias mesas|lg:grid-cols-2/);
   assert.match(view, /Modificar/);
+  assert.match(view, /Asignar/);
+  assert.match(view, /Mover/);
+  assert.match(view, /Quitar/);
   assert.match(view, /¿Eliminar esta mesa\?/);
   assert.match(view, /Todavía no hay mesas creadas\./);
-  assert.match(page, /Familias pendientes de acomodar/);
+  assert.match(view, /Familias pendientes de acomodar/);
   assert.doesNotMatch(view, /draggable|onDrag|room map|QR|check-in/i);
 });
 
@@ -87,7 +90,37 @@ test("admin seating boundary reads and writes real Supabase seating tables", asy
   assert.match(actions, /bulkInput\.amount === 1/);
   assert.match(actions, /updateEventTableAction/);
   assert.match(actions, /deleteEventTableAction/);
+  assert.match(actions, /setTableAssignmentAction/);
+  assert.match(actions, /removeTableAssignmentAction/);
   assert.match(actions, /revalidatePath\("\/admin\/seating"\)/);
+});
+
+test("admin seating assigns, moves, and removes families through event-scoped actions", async () => {
+  const boundary = await readSrc(BOUNDARY);
+  const server = await readSrc(SUPABASE_SERVER);
+  const shared = await readSrc(SHARED);
+  const view = await readSrc(VIEW);
+  const page = await readSrc(PAGE);
+
+  assert.match(shared, /TableAssignmentFormState/);
+  assert.match(boundary, /setTableAssignmentForAdmin/);
+  assert.match(boundary, /removeTableAssignmentForAdmin/);
+  assert.match(boundary, /group\.assignedSeats == null/);
+  assert.match(boundary, /assignedSeatsForTable\(data, table, group\.id\)/);
+  assert.match(boundary, /usedSeats \+ group\.assignedSeats > table\.capacity/);
+  assert.match(boundary, /table\.eventId !== group\.eventId/);
+  assert.match(server, /upsertTableAssignmentInSupabase/);
+  assert.match(server, /on_conflict=event_id,guest_group_id/);
+  assert.match(server, /deleteTableAssignmentInSupabase/);
+  assert.match(server, /guest_group_id=eq\.\$\{encodeURIComponent\(guestGroupId\)\}/);
+  assert.match(page, /pendingGroups=\{unassignedGuestGroups\.map\(buildSeatingAssignmentGuestGroup\)\}/);
+  assert.match(page, /buildSeatingTableOptions/);
+  assert.match(view, /<AssignmentPanel/);
+  assert.match(view, /Elige una mesa/);
+  assert.match(view, /sin lugares suficientes/);
+  assert.match(view, /Esta familia necesita lugares definidos antes de asignarla\./);
+  assert.match(view, /canUseTable\(table, group, currentTableId\)/);
+  assert.doesNotMatch(view, /draggable|onDrag|onDrop/i);
 });
 
 test("admin seating mutations are event-scoped and refuse unsafe deletes", async () => {
@@ -109,6 +142,7 @@ test("admin seating mutations are event-scoped and refuse unsafe deletes", async
   assert.match(view, /No se puede eliminar: esta mesa tiene familias asignadas\./);
   assert.match(view, /ADMIN_TABLE_EDIT_BUTTON_CLASS/);
   assert.match(view, /bg-\(--color-mist-blue\)\/70/);
+  assert.match(view, /bg-green-600/);
 });
 
 test("admin seating helpers expose the read-only grouping and labels", async () => {

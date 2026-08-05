@@ -638,6 +638,62 @@ export async function deleteEventTableInSupabase(
   return rows.length > 0;
 }
 
+export async function upsertTableAssignmentInSupabase(
+  eventId: string,
+  guestGroupId: string,
+  tableId: string
+): Promise<void> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${TABLE_ASSIGNMENTS_REST_PATH}` +
+    `?on_conflict=event_id,guest_group_id`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...authHeaders(serviceRoleKey),
+      Prefer: "resolution=merge-duplicates",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      event_id: eventId,
+      guest_group_id: guestGroupId,
+      table_id: tableId,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase upsert for table assignment "${guestGroupId}" failed: ${res.status} ${body}`
+    );
+  }
+}
+
+export async function deleteTableAssignmentInSupabase(
+  eventId: string,
+  guestGroupId: string
+): Promise<void> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${TABLE_ASSIGNMENTS_REST_PATH}` +
+    `?event_id=eq.${encodeURIComponent(eventId)}` +
+    `&guest_group_id=eq.${encodeURIComponent(guestGroupId)}`;
+
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: authHeaders(serviceRoleKey),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase delete for table assignment "${guestGroupId}" failed: ${res.status} ${body}`
+    );
+  }
+}
+
 /** Input for updating a guest group by slug. Snake-cased fields mirror the DB
  *  schema; the boundary (`admin-guest-groups.ts`) validates before calling. */
 export interface GuestGroupUpdateInput {
