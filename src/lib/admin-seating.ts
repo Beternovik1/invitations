@@ -30,6 +30,7 @@ import {
   type EventTableCreateFormState,
   type EventTableDeleteFormState,
   type EventTableFormState,
+  type TableAssignmentFormState,
 } from "@/lib/admin-seating-shared";
 
 export {
@@ -48,6 +49,7 @@ export {
   type EventTableCreateFormState,
   type EventTableDeleteFormState,
   type EventTableFormState,
+  type TableAssignmentFormState,
 };
 
 export type EventTable = AdminEventTable;
@@ -57,6 +59,10 @@ export interface TableAssignment {
   guestGroupId: string;
   tableId: string;
 }
+
+export type TableAssignmentActionResult =
+  | { ok: true }
+  | { ok: false; error: AdminEventTableError };
 
 export interface AdminSeatingGuestGroup extends GuestGroup {
   eventId?: string;
@@ -141,8 +147,16 @@ export const getAdminSeatingData = cache(async (): Promise<AdminSeatingData> => 
 const ERROR_MESSAGES: Record<AdminEventTableErrorCode, string> = {
   table_not_found:
     "Esta mesa ya no existe. Recarga la página para actualizar la lista.",
+  group_not_found:
+    "Esta familia ya no existe. Recarga la página para actualizar la lista.",
   event_not_available:
     "No se pudo determinar el evento de estas mesas. Revisa que las invitaciones pertenezcan a un solo evento.",
+  event_mismatch:
+    "Esta familia y esta mesa no pertenecen al mismo evento.",
+  seats_missing:
+    "Esta familia no tiene lugares definidos. Define sus lugares antes de asignarla a una mesa.",
+  table_capacity_exceeded:
+    "Esta mesa no tiene lugares suficientes para esa familia.",
   label_empty: "El nombre de la mesa no puede estar vacío.",
   label_too_long: `El nombre de la mesa debe tener ${MAX_TABLE_LABEL_LENGTH} caracteres o menos.`,
   capacity_invalid: "La capacidad debe ser un número entero mayor a 0.",
@@ -302,6 +316,30 @@ function hasTableCollision(
   return null;
 }
 
+function assignedSeatsForTable(
+  data: AdminSeatingData,
+  table: EventTable,
+  excludedGuestGroupId?: string
+): number {
+  const groupsById = new Map(
+    data.guestGroups
+      .filter((group) => group.id)
+      .map((group) => [group.id as string, group])
+  );
+
+  return data.tableAssignments.reduce((sum, assignment) => {
+    if (
+      assignment.eventId !== table.eventId ||
+      assignment.tableId !== table.id ||
+      assignment.guestGroupId === excludedGuestGroupId
+    ) {
+      return sum;
+    }
+
+    return sum + (groupsById.get(assignment.guestGroupId)?.assignedSeats ?? 0);
+  }, 0);
+}
+
 export async function createEventTableForAdmin(
   input: AdminEventTableInput
 ): Promise<AdminEventTableActionResult> {
@@ -441,6 +479,85 @@ export async function deleteEventTableForAdmin(
 
     const deleted = await deleteEventTableInSupabase(table.id, table.eventId);
     if (!deleted) return { ok: false, error: error("table_not_found") };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: error("unexpected") };
+  }
+}
+
+export async function setTableAssignmentForAdmin(
+  guestGroupId: string,
+  tableId: string
+): Promise<TableAssignmentActionResult> {
+  const trimmedGuestGroupId = guestGroupId.trim();
+  const trimmedTableId = tableId.trim();
+  if (trimmedGuestGroupId.length === 0) {
+    return { ok: false, error: error("group_not_found") };
+  }
+  if (trimmedTableId.length === 0) {
+    return { ok: false, error: error("table_not_found") };
+  }
+  if (!isSupabaseConfigured()) return { ok: false, error: error("unavailable") };
+
+  try {
+    const data = await getAdminSeatingData();
+    const group = data.guestGroups.find(
+      (item) => item.id === trimmedGuestGroupId
+    );
+    if (!group) {
+      return { ok: false, error: error("group_not_found") };
+    }
+    if (!group.id) return { ok: false, error: error("group_not_found") };
+    if (!group.eventId) return { ok: false, error: error("event_not_available") };
+    if (group.assignedSeats == null) {
+      return { ok: false, error: error("seats_missing") };
+    }
+
+    const table = data.eventTables.find((item) => item.id === trimmedTableId);
+    if (!table) return { ok: false, error: error("table_not_found") };
+    if (table.eventId !== group.eventId) {
+      return { ok: false, error: error("event_mismatch") };
+    }
+
+    const usedSeats = assignedSeatsForTable(data, table, group.id);
+    if (usedSeats + group.assignedSeats > table.capacity) {
+      return { ok: false, error: error("table_capacity_exceeded") };
+    }
+
+    const { upsertTableAssignmentInSupabase } = await import(
+      "@/lib/supabase/server"
+    );
+    await upsertTableAssignmentInSupabase(group.eventId, group.id, table.id);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: error("unexpected") };
+  }
+}
+
+export async function removeTableAssignmentForAdmin(
+  guestGroupId: string
+): Promise<TableAssignmentActionResult> {
+  const trimmedGuestGroupId = guestGroupId.trim();
+  if (trimmedGuestGroupId.length === 0) {
+    return { ok: false, error: error("group_not_found") };
+  }
+  if (!isSupabaseConfigured()) return { ok: false, error: error("unavailable") };
+
+  try {
+    const data = await getAdminSeatingData();
+    const group = data.guestGroups.find(
+      (item) => item.id === trimmedGuestGroupId
+    );
+    if (!group) {
+      return { ok: false, error: error("group_not_found") };
+    }
+    if (!group.id) return { ok: false, error: error("group_not_found") };
+    if (!group.eventId) return { ok: false, error: error("event_not_available") };
+
+    const { deleteTableAssignmentInSupabase } = await import(
+      "@/lib/supabase/server"
+    );
+    await deleteTableAssignmentInSupabase(group.eventId, group.id);
     return { ok: true };
   } catch {
     return { ok: false, error: error("unexpected") };

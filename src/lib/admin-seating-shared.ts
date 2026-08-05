@@ -22,7 +22,11 @@ export interface AdminEventTableBulkInput {
 
 export type AdminEventTableErrorCode =
   | "table_not_found"
+  | "group_not_found"
   | "event_not_available"
+  | "event_mismatch"
+  | "seats_missing"
+  | "table_capacity_exceeded"
   | "label_empty"
   | "label_too_long"
   | "capacity_invalid"
@@ -91,4 +95,14 @@ export type EventTableDeleteFormState =
 export const INITIAL_EVENT_TABLE_DELETE_FORM_STATE: EventTableDeleteFormState = {
   status: "idle",
   tableId: "",
+};
+
+export type TableAssignmentFormState =
+  | { status: "idle"; groupId: string }
+  | { status: "success"; groupId: string }
+  | { status: "error"; groupId: string; error: AdminEventTableError };
+
+export const INITIAL_TABLE_ASSIGNMENT_FORM_STATE: TableAssignmentFormState = {
+  status: "idle",
+  groupId: "",
 };

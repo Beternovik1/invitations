@@ -10,15 +10,19 @@ import {
   createEventTableForAdmin,
   createEventTablesBulkForAdmin,
   deleteEventTableForAdmin,
+  removeTableAssignmentForAdmin,
+  setTableAssignmentForAdmin,
   updateEventTableForAdmin,
   type EventTableBulkCreateFormState,
   type EventTableCreateFormState,
   type EventTableDeleteFormState,
   type EventTableFormState,
+  type TableAssignmentFormState,
 } from "@/lib/admin-seating";
 import {
   INITIAL_EVENT_TABLE_DELETE_FORM_STATE,
   INITIAL_EVENT_TABLE_FORM_STATE,
+  INITIAL_TABLE_ASSIGNMENT_FORM_STATE,
 } from "@/lib/admin-seating-shared";
 
 function parseTableInput(formData: FormData) {
@@ -46,6 +50,16 @@ function sessionExpiredError() {
     code: "unexpected" as const,
     message:
       "Tu sesión de administrador expiró. Recarga la página para iniciar sesión de nuevo.",
+  };
+}
+
+function parseAssignmentInput(formData: FormData) {
+  const rawGroupId = formData.get("groupId");
+  const rawTableId = formData.get("tableId");
+
+  return {
+    groupId: typeof rawGroupId === "string" ? rawGroupId.trim() : "",
+    tableId: typeof rawTableId === "string" ? rawTableId.trim() : "",
   };
 }
 
@@ -150,4 +164,43 @@ export async function deleteEventTableAction(
     return { status: "success", tableId };
   }
   return { status: "error", tableId, error: result.error };
+}
+
+export async function setTableAssignmentAction(
+  prevState: TableAssignmentFormState,
+  formData: FormData
+): Promise<TableAssignmentFormState> {
+  const { groupId, tableId } = parseAssignmentInput(formData);
+  if (groupId.length === 0) return INITIAL_TABLE_ASSIGNMENT_FORM_STATE;
+
+  if (!isAdminAccessConfigured() || !(await isAdminAuthenticated())) {
+    return { status: "error", groupId, error: sessionExpiredError() };
+  }
+
+  const result = await setTableAssignmentForAdmin(groupId, tableId);
+  if (result.ok) {
+    revalidatePath("/admin/seating");
+    return { status: "success", groupId };
+  }
+  return { status: "error", groupId, error: result.error };
+}
+
+export async function removeTableAssignmentAction(
+  prevState: TableAssignmentFormState,
+  formData: FormData
+): Promise<TableAssignmentFormState> {
+  const rawGroupId = formData.get("groupId");
+  const groupId = typeof rawGroupId === "string" ? rawGroupId.trim() : "";
+  if (groupId.length === 0) return INITIAL_TABLE_ASSIGNMENT_FORM_STATE;
+
+  if (!isAdminAccessConfigured() || !(await isAdminAuthenticated())) {
+    return { status: "error", groupId, error: sessionExpiredError() };
+  }
+
+  const result = await removeTableAssignmentForAdmin(groupId);
+  if (result.ok) {
+    revalidatePath("/admin/seating");
+    return { status: "success", groupId };
+  }
+  return { status: "error", groupId, error: result.error };
 }

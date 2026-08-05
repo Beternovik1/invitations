@@ -6,12 +6,15 @@ import { useFormStatus } from "react-dom";
 import {
   createEventTablesAdaptiveAction,
   deleteEventTableAction,
+  removeTableAssignmentAction,
+  setTableAssignmentAction,
   updateEventTableAction,
 } from "@/app/admin/(dashboard)/seating/actions";
 import {
   INITIAL_EVENT_TABLE_BULK_CREATE_FORM_STATE,
   INITIAL_EVENT_TABLE_DELETE_FORM_STATE,
   INITIAL_EVENT_TABLE_FORM_STATE,
+  INITIAL_TABLE_ASSIGNMENT_FORM_STATE,
   MAX_BULK_TABLE_COUNT,
   MAX_TABLE_CAPACITY,
   MAX_TABLE_LABEL_LENGTH,
@@ -19,13 +22,22 @@ import {
   type EventTableFormState,
 } from "@/lib/admin-seating-shared";
 
-interface SeatingTableGuestGroup {
+export interface SeatingAssignmentGuestGroup {
   id: string;
   displayName: string;
   slug: string;
+  assignedSeats: number | null;
   seatLabel: string;
   rsvpLabel: string;
   rsvpTone: "empty" | "declined" | "confirmed";
+}
+
+export interface SeatingTableOption {
+  id: string;
+  label: string;
+  capacity: number;
+  assignedSeats: number;
+  capacityLabel: string;
 }
 
 export interface SeatingTableRow {
@@ -36,7 +48,7 @@ export interface SeatingTableRow {
   assignedSeats: number;
   capacityLabel: string;
   occupancyPercent: number;
-  assignedGroups: SeatingTableGuestGroup[];
+  assignedGroups: SeatingAssignmentGuestGroup[];
 }
 
 const ADMIN_CARD_CLASS =
@@ -51,6 +63,9 @@ const ADMIN_SECONDARY_BUTTON_CLASS =
 const ADMIN_TABLE_EDIT_BUTTON_CLASS =
   "rounded-xl border border-(--color-admin-navy) bg-(--color-admin-navy) px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-(--color-admin-navy-soft)";
 
+const ADMIN_DANGER_BUTTON_CLASS =
+  "rounded-xl border border-red-500/40 bg-red-50/60 px-3 py-2 text-sm font-medium text-red-700 transition hover:border-red-500 disabled:cursor-not-allowed disabled:opacity-60";
+
 const ADMIN_FIELD_CLASS =
   "w-full rounded-xl border border-(--color-admin-border) bg-white px-4 py-2.5 text-sm text-(--color-ink) shadow-sm outline-none transition focus:border-(--color-admin-navy-soft) focus:ring-2 focus:ring-(--color-admin-navy)/10";
 
@@ -62,10 +77,16 @@ const STATUS_CHIP_CLASS =
 
 export default function SeatingTableManager({
   tables,
+  tableOptions,
+  pendingGroups,
   guestGroupCount,
+  pendingGuestGroupCount,
 }: {
   tables: SeatingTableRow[];
+  tableOptions: SeatingTableOption[];
+  pendingGroups: SeatingAssignmentGuestGroup[];
   guestGroupCount: number;
+  pendingGuestGroupCount: number;
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingTableId, setEditingTableId] = useState<string | null>(null);
@@ -103,11 +124,18 @@ export default function SeatingTableManager({
               editing={editingTableId === table.id}
               formState={formState}
               formAction={formAction}
+              tableOptions={tableOptions}
               onToggleEdit={(next) => setEditingTableId(next ? table.id : null)}
             />
           ))}
         </div>
       )}
+
+      <PendingFamiliesSection
+        groups={pendingGroups}
+        tables={tableOptions}
+        pendingGuestGroupCount={pendingGuestGroupCount}
+      />
     </section>
   );
 }
@@ -184,12 +212,14 @@ function TableCard({
   editing,
   formState,
   formAction,
+  tableOptions,
   onToggleEdit,
 }: {
   table: SeatingTableRow;
   editing: boolean;
   formState: EventTableFormState;
   formAction: (payload: FormData) => void;
+  tableOptions: SeatingTableOption[];
   onToggleEdit: (editing: boolean) => void;
 }) {
   return (
@@ -209,7 +239,7 @@ function TableCard({
       <div className="mt-4" aria-label={table.capacityLabel}>
         <div className="h-2 overflow-hidden rounded-full bg-(--color-mist-blue-deep)">
           <div
-            className="h-full rounded-full bg-(--color-admin-navy)"
+            className="h-full rounded-full bg-green-600"
             style={{ width: `${table.occupancyPercent}%` }}
           />
         </div>
@@ -220,7 +250,11 @@ function TableCard({
           Esta mesa todavía no tiene familias asignadas.
         </p>
       ) : (
-        <GuestGroupList groups={table.assignedGroups} />
+        <GuestGroupList
+          groups={table.assignedGroups}
+          tables={tableOptions}
+          currentTableId={table.id}
+        />
       )}
 
       <div className="mt-4 flex justify-end">
@@ -450,7 +484,7 @@ function DeleteTableControl({
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="rounded-xl border border-red-500/40 bg-red-50/60 px-3 py-2 text-sm font-medium text-red-700 transition hover:border-red-500"
+            className={ADMIN_DANGER_BUTTON_CLASS}
           >
             Eliminar
           </button>
@@ -460,27 +494,246 @@ function DeleteTableControl({
   );
 }
 
-function GuestGroupList({ groups }: { groups: SeatingTableGuestGroup[] }) {
+function GuestGroupList({
+  groups,
+  tables,
+  currentTableId,
+}: {
+  groups: SeatingAssignmentGuestGroup[];
+  tables: SeatingTableOption[];
+  currentTableId: string;
+}) {
   return (
     <ul className="mt-4 grid gap-2">
       {groups.map((group) => (
-        <li
+        <AssignedGuestGroupItem
           key={group.id}
-          className="rounded-2xl border border-(--color-admin-border) bg-(--color-mist-blue)/70 p-3 sm:flex sm:items-center sm:justify-between sm:gap-4"
-        >
-          <div className="min-w-0">
-            <p className="truncate font-medium text-(--color-ink)">{group.displayName}</p>
-            <p className="mt-0.5 truncate text-xs text-(--color-ink-dim)">{group.slug}</p>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-(--color-ink-dim) sm:mt-0 sm:justify-end">
-            <span className="rounded-full border border-(--color-admin-border) bg-white/75 px-3 py-1">
-              {group.seatLabel}
-            </span>
-            <span className={getRsvpChipClass(group.rsvpTone)}>{group.rsvpLabel}</span>
-          </div>
-        </li>
+          group={group}
+          tables={tables}
+          currentTableId={currentTableId}
+        />
       ))}
     </ul>
+  );
+}
+
+function PendingFamiliesSection({
+  groups,
+  tables,
+  pendingGuestGroupCount,
+}: {
+  groups: SeatingAssignmentGuestGroup[];
+  tables: SeatingTableOption[];
+  pendingGuestGroupCount: number;
+}) {
+  const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+
+  return (
+    <section className={ADMIN_CARD_CLASS}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold tracking-[-0.02em] text-(--color-ink)">
+            Familias pendientes de acomodar
+          </h2>
+          <p className="mt-0.5 text-sm leading-6 text-(--color-ink-dim)">
+            Asigna cada familia a una mesa desde el celular, sin arrastrar nada.
+          </p>
+        </div>
+        <span className={STATUS_CHIP_CLASS}>{pendingGuestGroupCount} familias</span>
+      </div>
+
+      {groups.length === 0 ? (
+        <p className="mt-4 rounded-2xl border border-(--color-dusty-teal)/35 bg-(--color-sage)/35 px-4 py-5 text-sm text-(--color-ink)">
+          Todas las familias activas ya tienen mesa asignada.
+        </p>
+      ) : (
+        <ul className="mt-4 grid gap-2">
+          {groups.map((group) => (
+            <li
+              key={group.id}
+              className="rounded-2xl border border-(--color-admin-border) bg-(--color-mist-blue)/70 p-3"
+            >
+              <GuestGroupSummary group={group} />
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenGroupId(openGroupId === group.id ? null : group.id)
+                  }
+                  aria-expanded={openGroupId === group.id}
+                  className={ADMIN_TABLE_EDIT_BUTTON_CLASS}
+                >
+                  {openGroupId === group.id ? "Cerrar" : "Asignar"}
+                </button>
+              </div>
+              {openGroupId === group.id ? (
+                <AssignmentPanel
+                  group={group}
+                  tables={tables}
+                  submitLabel="Confirmar"
+                />
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function AssignedGuestGroupItem({
+  group,
+  tables,
+  currentTableId,
+}: {
+  group: SeatingAssignmentGuestGroup;
+  tables: SeatingTableOption[];
+  currentTableId: string;
+}) {
+  const [moving, setMoving] = useState(false);
+  const [removeState, removeAction] = useActionState(
+    removeTableAssignmentAction,
+    INITIAL_TABLE_ASSIGNMENT_FORM_STATE
+  );
+  const feedback = removeState.groupId === group.id ? removeState : null;
+
+  return (
+    <li className="rounded-2xl border border-(--color-admin-border) bg-(--color-mist-blue)/70 p-3">
+      <GuestGroupSummary group={group} />
+      <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setMoving((open) => !open)}
+          aria-expanded={moving}
+          className={ADMIN_SECONDARY_BUTTON_CLASS}
+        >
+          {moving ? "Cerrar" : "Mover"}
+        </button>
+        <form action={removeAction}>
+          <input type="hidden" name="groupId" value={group.id} />
+          <RemoveAssignmentButton />
+        </form>
+      </div>
+      {feedback?.status === "error" ? (
+        <div className="mt-3">
+          <ErrorMessage message={feedback.error.message} />
+        </div>
+      ) : null}
+      {moving ? (
+        <AssignmentPanel
+          group={group}
+          tables={tables}
+          currentTableId={currentTableId}
+          submitLabel="Mover familia"
+        />
+      ) : null}
+    </li>
+  );
+}
+
+function GuestGroupSummary({ group }: { group: SeatingAssignmentGuestGroup }) {
+  return (
+    <div className="sm:flex sm:items-center sm:justify-between sm:gap-4">
+      <div className="min-w-0">
+        <p className="truncate font-medium text-(--color-ink)">{group.displayName}</p>
+        <p className="mt-0.5 truncate text-xs text-(--color-ink-dim)">{group.slug}</p>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-(--color-ink-dim) sm:mt-0 sm:justify-end">
+        <span className="rounded-full border border-(--color-admin-border) bg-white/75 px-3 py-1">
+          {group.seatLabel}
+        </span>
+        <span className={getRsvpChipClass(group.rsvpTone)}>{group.rsvpLabel}</span>
+      </div>
+    </div>
+  );
+}
+
+function AssignmentPanel({
+  group,
+  tables,
+  currentTableId,
+  submitLabel,
+}: {
+  group: SeatingAssignmentGuestGroup;
+  tables: SeatingTableOption[];
+  currentTableId?: string;
+  submitLabel: string;
+}) {
+  const [state, action] = useActionState(
+    setTableAssignmentAction,
+    INITIAL_TABLE_ASSIGNMENT_FORM_STATE
+  );
+  const feedback = state.groupId === group.id ? state : null;
+  const hasAvailableTable = tables.some((table) =>
+    canUseTable(table, group, currentTableId)
+  );
+  const canAssign = group.assignedSeats != null && hasAvailableTable;
+
+  return (
+    <form
+      action={action}
+      className="mt-3 space-y-3 rounded-2xl border border-(--color-admin-border) bg-white/70 p-3"
+    >
+      <input type="hidden" name="groupId" value={group.id} />
+      <label className="block">
+        <span className={ADMIN_FIELD_LABEL_CLASS}>Mesa</span>
+        <select
+          name="tableId"
+          required
+          disabled={!canAssign}
+          className={ADMIN_FIELD_CLASS}
+        >
+          <option value="">Elige una mesa</option>
+          {tables.map((table) => {
+            const disabled = !canUseTable(table, group, currentTableId);
+            return (
+              <option key={table.id} value={table.id} disabled={disabled}>
+                {table.label} — {table.capacityLabel}
+                {disabled ? " — sin lugares suficientes" : ""}
+              </option>
+            );
+          })}
+        </select>
+      </label>
+      {group.assignedSeats == null ? (
+        <ErrorMessage message="Esta familia necesita lugares definidos antes de asignarla." />
+      ) : null}
+      {tables.length === 0 ? (
+        <ErrorMessage message="Primero crea al menos una mesa." />
+      ) : null}
+      {group.assignedSeats != null && !hasAvailableTable ? (
+        <ErrorMessage message="No hay mesas con lugares suficientes para esta familia." />
+      ) : null}
+      {feedback?.status === "error" ? (
+        <ErrorMessage message={feedback.error.message} />
+      ) : null}
+      {feedback?.status === "success" ? (
+        <p className="rounded-xl border border-(--color-dusty-teal)/35 bg-(--color-sage)/35 px-3 py-2 text-sm text-(--color-ink)">
+          Asignación guardada.
+        </p>
+      ) : null}
+      <div className="flex justify-end">
+        <SubmitButton
+          label={submitLabel}
+          pendingLabel="Guardando…"
+          disabled={!canAssign}
+        />
+      </div>
+    </form>
+  );
+}
+
+function canUseTable(
+  table: SeatingTableOption,
+  group: SeatingAssignmentGuestGroup,
+  currentTableId?: string
+): boolean {
+  if (group.assignedSeats == null) return false;
+  const seatsAlreadyUsedByGroup =
+    table.id === currentTableId ? group.assignedSeats : 0;
+  return (
+    table.assignedSeats - seatsAlreadyUsedByGroup + group.assignedSeats <=
+    table.capacity
   );
 }
 
@@ -509,11 +762,32 @@ function ErrorMessage({ message }: { message: string }) {
   );
 }
 
-function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
+function SubmitButton({
+  label,
+  pendingLabel,
+  disabled = false,
+}: {
+  label: string;
+  pendingLabel: string;
+  disabled?: boolean;
+}) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className={ADMIN_PRIMARY_BUTTON_CLASS + " px-4"}>
+    <button
+      type="submit"
+      disabled={pending || disabled}
+      className={ADMIN_PRIMARY_BUTTON_CLASS + " px-4"}
+    >
       {pending ? pendingLabel : label}
+    </button>
+  );
+}
+
+function RemoveAssignmentButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending} className={ADMIN_DANGER_BUTTON_CLASS}>
+      {pending ? "Quitando…" : "Quitar"}
     </button>
   );
 }
@@ -531,7 +805,7 @@ function DeleteButton() {
   );
 }
 
-function getRsvpChipClass(tone: SeatingTableGuestGroup["rsvpTone"]): string {
+function getRsvpChipClass(tone: SeatingAssignmentGuestGroup["rsvpTone"]): string {
   const base = "rounded-full border px-3 py-1";
   if (tone === "empty") {
     return `${base} border-(--color-admin-border) bg-(--color-mist-blue-deep)/80 text-(--color-admin-navy)`;
