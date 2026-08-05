@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { GuestGroup } from "@/lib/guest-groups";
+import { DEFAULT_GUEST_GROUP_CATEGORY } from "@/lib/guest-group-categories";
 import type { AdminGuestGroup } from "@/lib/admin-overview";
 import type {
   AdminSeatingGuestGroup,
@@ -32,7 +33,7 @@ const RSVP_REST_PATH = "/rest/v1/rsvps";
 const EVENT_TABLES_REST_PATH = "/rest/v1/event_tables";
 const TABLE_ASSIGNMENTS_REST_PATH = "/rest/v1/guest_group_table_assignments";
 const COLUMNS =
-  "id,slug,access_token,display_name,assigned_seats,is_active,seats_note,notes,sent_at";
+  "id,slug,access_token,display_name,assigned_seats,is_active,seats_note,notes,sent_at,category";
 const SEATING_GUEST_GROUP_COLUMNS = `event_id,${COLUMNS}`;
 
 interface SupabaseConfig {
@@ -75,6 +76,7 @@ interface GuestGroupRow {
    *  Absent on rows written before migration 0005 ran; mapped to `undefined`
    *  so the boundary's downstream "treat as not sent" default stays correct. */
   sent_at: string | null;
+  category: string | null;
 }
 
 function mapRow(row: GuestGroupRow): GuestGroup {
@@ -88,6 +90,7 @@ function mapRow(row: GuestGroupRow): GuestGroup {
     notes: row.notes ?? null,
     isActive: row.is_active,
     sentAt: row.sent_at ?? null,
+    category: row.category ?? DEFAULT_GUEST_GROUP_CATEGORY,
   };
 }
 
@@ -700,6 +703,7 @@ export interface GuestGroupUpdateInput {
   displayName: string;
   assignedSeats: number | null;
   seatsNote: string | null;
+  category: string;
   isActive: boolean;
 }
 
@@ -736,6 +740,7 @@ export async function updateGuestGroupInSupabase(
       display_name: input.displayName,
       assigned_seats: input.assignedSeats,
       seats_note: input.seatsNote,
+      category: input.category,
       is_active: input.isActive,
     }),
   });
@@ -800,6 +805,7 @@ export interface GuestGroupInsertInput {
   displayName: string;
   assignedSeats: number | null;
   seatsNote: string | null;
+  category: string;
 }
 
 /**
@@ -835,6 +841,7 @@ export async function insertGuestGroupInSupabase(
       display_name: input.displayName,
       assigned_seats: input.assignedSeats,
       seats_note: input.seatsNote,
+      category: input.category,
       is_active: true,
     }),
   });

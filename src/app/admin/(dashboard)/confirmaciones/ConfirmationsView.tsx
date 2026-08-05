@@ -19,6 +19,13 @@ import {
   type GuestGroupFormState,
 } from "@/lib/admin-guest-groups-shared";
 import {
+  MAX_GUEST_GROUP_CATEGORY_LENGTH,
+  OTHER_GUEST_GROUP_CATEGORY,
+  getCategorySelectValue,
+  getCustomCategoryValue,
+  getGuestGroupCategoryOptions,
+} from "@/lib/guest-group-categories";
+import {
   CONFIRMATION_FILTER_OPTIONS,
   CONFIRMATION_SORT_OPTIONS,
   CONFIRMATION_STATUS_LABELS,
@@ -128,12 +135,20 @@ export default function ConfirmationsView({
       trimmed.length === 0
         ? byStatus
         : byStatus.filter((group) =>
-            matchesQuery(query, [group.displayName, group.slug])
+            matchesQuery(query, [
+              group.displayName,
+              group.slug,
+              group.category ?? "",
+            ])
           );
     return sortConfirmations(searched, sortKey);
   }, [groups, query, sortKey, filterKey]);
 
   const summary = useMemo(() => computeSummary(groups), [groups]);
+  const categoryOptions = useMemo(
+    () => getGuestGroupCategoryOptions(groups.map((group) => group.category)),
+    [groups]
+  );
   const enviadosCount = summary.groupsEnviados;
   const selectedFilterLabel =
     CONFIRMATION_FILTER_OPTIONS.find((option) => option.value === filterKey)
@@ -262,6 +277,7 @@ export default function ConfirmationsView({
       {createOpenNonce !== null ? (
         <NewInvitationPanel
           key={createOpenNonce}
+          categoryOptions={categoryOptions}
           onClose={() => setCreateOpenNonce(null)}
           onReset={() =>
             setCreateOpenNonce((prev) => (prev ?? 0) + 1)
@@ -281,6 +297,7 @@ export default function ConfirmationsView({
             <li key={group.slug}>
               <ConfirmationCard
                 group={group}
+                categoryOptions={categoryOptions}
                 isEditing={editingSlug === group.slug}
                 onToggleEdit={(next) =>
                   setEditingSlug(next ? group.slug : null)
@@ -416,12 +433,14 @@ function HeroSummaryCard({
 
 function ConfirmationCard({
   group,
+  categoryOptions,
   isEditing,
   onToggleEdit,
   formState,
   formAction,
 }: {
   group: AdminGuestGroup;
+  categoryOptions: readonly string[];
   isEditing: boolean;
   onToggleEdit: (next: boolean) => void;
   formState: GuestGroupFormState;
@@ -435,34 +454,29 @@ function ConfirmationCard({
   const confirmedLabel = hasAssignedSeats
     ? `${group.rsvp?.attendingCount ?? 0} de ${group.assignedSeats}`
     : "—";
+  const categoryLabel = group.category ?? OTHER_GUEST_GROUP_CATEGORY;
 
   return (
-    <article className="rounded-2xl border border-(--color-admin-border) bg-white p-4 shadow-[0_14px_30px_rgba(36,48,68,0.07)] sm:p-5">
-      <div className="flex items-start justify-between gap-3">
+    <article className="w-full min-w-0 overflow-hidden rounded-2xl border border-(--color-admin-border) bg-white p-4 shadow-[0_14px_30px_rgba(36,48,68,0.07)] sm:p-5">
+      <div className="min-w-0">
         <div className="min-w-0">
-          <h3 className="truncate text-lg font-semibold tracking-[-0.02em] text-(--color-ink)">
+          <h3 className="text-lg font-semibold leading-snug tracking-[-0.02em] text-(--color-ink) break-words">
             {group.displayName}
           </h3>
-          <p className="mt-0.5 truncate text-xs text-(--color-ink-dim)">
-            {group.slug}
-          </p>
         </div>
+        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
         <span
-          className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-xs ${CONFIRMATION_STATUS_TONE[status]}`}
+          className={`inline-flex w-fit shrink-0 rounded-full border px-2.5 py-1 text-xs ${CONFIRMATION_STATUS_TONE[status]}`}
         >
           {CONFIRMATION_STATUS_LABELS[status]}
         </span>
+        <p className="inline-flex max-w-full rounded-full border border-(--color-admin-border) bg-white px-2.5 py-1 text-xs font-medium text-(--color-ink-dim)">
+          <span className="truncate">{categoryLabel}</span>
+        </p>
+        </div>
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-        <div>
-          <dt className="text-xs font-medium text-(--color-ink-dim)">
-            Lugares asignados
-          </dt>
-          <dd className="mt-1 text-(--color-ink)">
-            {hasAssignedSeats ? group.assignedSeats : "Por asignar"}
-          </dd>
-        </div>
         <div>
           <dt className="text-xs font-medium text-(--color-ink-dim)">
             Lugares confirmados
@@ -474,7 +488,8 @@ function ConfirmationCard({
       {/* Copy + Enviada + Modificar actions. The copy button is the host's
           whole point here; the sent-state toggle persists `sent_at` through a
           Server Action; `Modificar` opens the inline edit panel below for this
-          card only. All three are kept in the same row on phones. */}
+          card only. All three are kept in the same row and may wrap only on
+          very narrow screens. */}
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-(--color-glass-border) pt-4">
         <CopyLinkButton path={invitationPath} disabled={!hasAssignedSeats} />
 
@@ -499,11 +514,7 @@ function ConfirmationCard({
         <p className="mt-2 text-xs text-(--color-ink-soft)">
           Asigna lugares primero
         </p>
-      ) : (
-        <p className="mt-2 text-xs text-(--color-ink-soft)">
-          Marca &ldquo;Enviada&rdquo; cuando ya mandaste el enlace por WhatsApp.
-        </p>
-      )}
+      ) : null}
 
       {/* Inline `Modificar` panel. Only the card whose `editingSlug` matches
           renders this; every other card stays collapsed. The form reuses the
@@ -518,6 +529,7 @@ function ConfirmationCard({
       {isEditing ? (
         <ModifyPanel
           group={group}
+          categoryOptions={categoryOptions}
           formState={formState}
           formAction={formAction}
           onCancel={() => onToggleEdit(false)}
@@ -533,11 +545,13 @@ function ConfirmationCard({
 
 function ModifyPanel({
   group,
+  categoryOptions,
   formState,
   formAction,
   onCancel,
 }: {
   group: AdminGuestGroup;
+  categoryOptions: readonly string[];
   formState: GuestGroupFormState;
   formAction: (payload: FormData) => void;
   onCancel: () => void;
@@ -547,6 +561,14 @@ function ModifyPanel({
   const feedback = formState.slug === group.slug ? formState : null;
   const hasError = feedback?.status === "error";
   const fieldErrors = hasError ? feedback.error.fields : undefined;
+  const [category, setCategory] = useState<string>(() =>
+    getCategorySelectValue(
+      group.category ?? OTHER_GUEST_GROUP_CATEGORY,
+      categoryOptions
+    )
+  );
+  const customCategoryId = useId();
+  const showCustomCategory = category === OTHER_GUEST_GROUP_CATEGORY;
 
   return (
     <>
@@ -600,6 +622,19 @@ function ModifyPanel({
           </span>
         ) : null}
       </label>
+
+      <CategoryFields
+        category={category}
+        categoryOptions={categoryOptions}
+        customCategoryId={customCategoryId}
+        customCategoryDefaultValue={getCustomCategoryValue(
+          group.category ?? OTHER_GUEST_GROUP_CATEGORY,
+          categoryOptions
+        )}
+        error={fieldErrors?.category}
+        onCategoryChange={setCategory}
+        showCustomCategory={showCustomCategory}
+      />
 
       {feedback?.status === "success" ? (
         <p className="rounded-xl border border-(--color-dusty-teal)/35 bg-(--color-sage)/35 px-3 py-2 text-sm text-(--color-ink)">
@@ -752,6 +787,66 @@ function SaveButton() {
   );
 }
 
+function CategoryFields({
+  category,
+  categoryOptions,
+  customCategoryId,
+  customCategoryDefaultValue,
+  error,
+  onCategoryChange,
+  showCustomCategory,
+}: {
+  category: string;
+  categoryOptions: readonly string[];
+  customCategoryId: string;
+  customCategoryDefaultValue?: string;
+  error?: string;
+  onCategoryChange: (category: string) => void;
+  showCustomCategory: boolean;
+}) {
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
+          Categoría
+        </span>
+        <select
+          name="category"
+          value={category}
+          onChange={(event) => onCategoryChange(event.target.value)}
+          className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-3 py-2 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60"
+        >
+          {categoryOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {showCustomCategory ? (
+        <label htmlFor={customCategoryId} className="block">
+          <span className="mb-1.5 block text-xs font-medium text-(--color-ink-dim)">
+            Categoría personalizada
+          </span>
+          <input
+            id={customCategoryId}
+            name="customCategory"
+            defaultValue={customCategoryDefaultValue ?? ""}
+            maxLength={MAX_GUEST_GROUP_CATEGORY_LENGTH}
+            placeholder="Ej. Vecinos"
+            className="w-full rounded-xl border border-(--color-glass-border) bg-white/60 px-3 py-2 text-sm text-(--color-ink) outline-none transition focus:border-(--color-gold)/60"
+          />
+        </label>
+      ) : (
+        <input type="hidden" name="customCategory" value="" />
+      )}
+
+      {error ? <span className="block text-xs text-red-700">{error}</span> : null}
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Copy link                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -770,7 +865,7 @@ function CopyLinkButton({
     const url = `${window.location.origin}${path}`;
     try {
       await navigator.clipboard.writeText(url);
-      setLabel("Link copiado en el portapapeles");
+      setLabel("Copiado");
       window.setTimeout(() => setLabel("Copiar"), 1800);
     } catch {
       setLabel("No se pudo copiar");
@@ -876,9 +971,11 @@ function SentToggle({
    (toggled by the parent's `createOpenNonce`) resets the form cleanly. The
    parent keys the panel by the nonce, so "Crear otra" remounts it fresh. */
 function NewInvitationPanel({
+  categoryOptions,
   onClose,
   onReset,
 }: {
+  categoryOptions: readonly string[];
   onClose: () => void;
   onReset: () => void;
 }) {
@@ -891,6 +988,8 @@ function NewInvitationPanel({
   // recomputes the canonical slug on the server, so this is advisory only.
   const [displayName, setDisplayName] = useState("");
   const previewSlug = slugifyGuestGroupName(displayName);
+  const [category, setCategory] = useState<string>(OTHER_GUEST_GROUP_CATEGORY);
+  const customCategoryId = useId();
 
   return (
     <form
@@ -969,6 +1068,19 @@ function NewInvitationPanel({
           </span>
         ) : null}
       </label>
+
+      <CategoryFields
+        category={category}
+        categoryOptions={categoryOptions}
+        customCategoryId={customCategoryId}
+        error={
+          formState.status === "error"
+            ? formState.error.fields?.category
+            : undefined
+        }
+        onCategoryChange={setCategory}
+        showCustomCategory={category === OTHER_GUEST_GROUP_CATEGORY}
+      />
 
       {formState.status === "success" ? (
         <div className="rounded-xl border border-(--color-dusty-teal)/35 bg-(--color-sage)/35 px-3 py-2.5 text-sm text-(--color-ink)">
