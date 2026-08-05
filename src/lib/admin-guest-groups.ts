@@ -37,6 +37,7 @@ import { cache } from "react";
 import {
   DEFAULT_GUEST_GROUP_CATEGORY,
   MAX_GUEST_GROUP_CATEGORY_LENGTH,
+  isCustomGuestGroupCategory,
   normalizeGuestGroupCategory,
 } from "@/lib/guest-group-categories";
 import {
@@ -141,6 +142,17 @@ function parseCategory(input: {
     };
   }
   return { ok: true, category };
+}
+
+async function persistCustomCategoryIfNeeded(group: GuestGroup): Promise<void> {
+  if (!group.eventId || !isCustomGuestGroupCategory(group.category ?? "")) {
+    return;
+  }
+
+  const { upsertGuestGroupCategoryInSupabase } = await import(
+    "@/lib/supabase/server"
+  );
+  await upsertGuestGroupCategoryInSupabase(group.eventId, group.category ?? "");
 }
 
 /**
@@ -279,6 +291,7 @@ export async function updateGuestGroupForAdmin(
     if (!group) {
       return { ok: false, error: error("group_not_found") };
     }
+    await persistCustomCategoryIfNeeded(group);
     return { ok: true, group };
   } catch {
     return { ok: false, error: error("unexpected") };
@@ -426,6 +439,7 @@ export async function createOrReactivateGuestGroupForAdmin(
         // found and ask the host to retry; the next attempt will INSERT.
         return { ok: false, error: error("group_not_found") };
       }
+      await persistCustomCategoryIfNeeded(reactivated);
       return { ok: true, group: reactivated };
     }
 
@@ -435,6 +449,7 @@ export async function createOrReactivateGuestGroupForAdmin(
       seatsNote: null,
       category: categoryResult.category,
     });
+    await persistCustomCategoryIfNeeded(created);
     return { ok: true, group: created };
   } catch {
     return { ok: false, error: error("unexpected") };

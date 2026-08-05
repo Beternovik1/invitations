@@ -7,7 +7,10 @@ import {
   isAdminAccessConfigured,
   isAdminAuthenticated,
 } from "@/lib/admin-access";
-import { getActiveGuestGroupsWithRsvp } from "@/lib/admin-overview";
+import {
+  getActiveGuestGroupsWithRsvp,
+  getGuestGroupCategoryLabelsForAdmin,
+} from "@/lib/admin-overview";
 
 /**
  * Unified Confirmaciones admin page.
@@ -46,12 +49,18 @@ export default async function AdminConfirmacionesPage() {
   }
 
   const groups = await getActiveGuestGroupsWithRsvp();
+  const savedCategoryLabels = await getGuestGroupCategoryLabelsForAdmin(
+    groups.map((group) => group.eventId ?? "")
+  );
 
   return (
     <section>
       <AdminPageHeader title="Gestión de invitaciones" />
 
-      <ConfirmationsView groups={groups} />
+      <ConfirmationsView
+        groups={groups}
+        savedCategoryLabels={savedCategoryLabels}
+      />
     </section>
   );
 }

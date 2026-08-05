@@ -45,6 +45,9 @@ const ADMIN_PRIMARY_BUTTON_CLASS =
 const ADMIN_SECONDARY_BUTTON_CLASS =
   "rounded-xl border border-(--color-admin-border) bg-white px-3 py-2 text-sm font-medium text-(--color-ink-dim) transition hover:border-(--color-admin-navy-soft) hover:text-(--color-ink)";
 
+const ADMIN_DANGER_BUTTON_CLASS =
+  "rounded-xl border border-red-700 bg-red-700 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:border-red-800 hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60";
+
 const ADMIN_FIELD_CLASS =
   "w-full rounded-xl border border-(--color-admin-border) bg-white px-4 py-2.5 text-sm text-(--color-ink) shadow-sm outline-none transition focus:border-(--color-admin-navy-soft) focus:ring-2 focus:ring-(--color-admin-navy)/10";
 
@@ -89,8 +92,10 @@ const ADMIN_FIELD_LABEL_CLASS =
  */
 export default function ConfirmationsView({
   groups,
+  savedCategoryLabels,
 }: {
   groups: AdminGuestGroup[];
+  savedCategoryLabels: string[];
 }) {
   const searchId = useId();
   const sortId = useId();
@@ -146,8 +151,12 @@ export default function ConfirmationsView({
 
   const summary = useMemo(() => computeSummary(groups), [groups]);
   const categoryOptions = useMemo(
-    () => getGuestGroupCategoryOptions(groups.map((group) => group.category)),
-    [groups]
+    () =>
+      getGuestGroupCategoryOptions([
+        ...savedCategoryLabels,
+        ...groups.map((group) => group.category),
+      ]),
+    [groups, savedCategoryLabels]
   );
   const enviadosCount = summary.groupsEnviados;
   const selectedFilterLabel =
@@ -528,6 +537,7 @@ function ConfirmationCard({
               a name/seats edit from this screen. */}
       {isEditing ? (
         <ModifyPanel
+          key={`${group.slug}-${group.category ?? OTHER_GUEST_GROUP_CATEGORY}`}
           group={group}
           categoryOptions={categoryOptions}
           formState={formState}
@@ -751,7 +761,7 @@ function DeleteControl({
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="rounded-xl border border-red-500/40 bg-red-50/60 px-3 py-2 text-sm font-medium text-red-700 transition hover:border-red-500"
+            className={ADMIN_DANGER_BUTTON_CLASS}
           >
             Eliminar
           </button>
@@ -767,7 +777,7 @@ function ConfirmDeleteButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl border border-red-500/50 bg-red-600/90 px-3 py-2 text-sm font-medium text-white transition hover:border-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+      className={ADMIN_DANGER_BUTTON_CLASS}
     >
       {pending ? "Eliminando…" : "Eliminar"}
     </button>

@@ -89,3 +89,14 @@ export const getActiveGuestGroupsWithRsvp = cache(
     return fetchAllActiveGuestGroupsWithRsvpFromSupabase();
   }
 );
+
+export const getGuestGroupCategoryLabelsForAdmin = cache(
+  async (eventIds: readonly string[]): Promise<string[]> => {
+    if (!isSupabaseConfigured()) return [];
+
+    const { fetchGuestGroupCategoryLabelsFromSupabase } = await import(
+      "@/lib/supabase/server"
+    );
+    return fetchGuestGroupCategoryLabelsFromSupabase(eventIds);
+  }
+);

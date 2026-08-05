@@ -17,9 +17,15 @@ export type DefaultGuestGroupCategory =
 export function isDefaultGuestGroupCategory(
   category: string
 ): category is DefaultGuestGroupCategory {
+  const normalized = category.trim();
   return DEFAULT_GUEST_GROUP_CATEGORIES.includes(
-    category as DefaultGuestGroupCategory
+    normalized as DefaultGuestGroupCategory
   );
+}
+
+export function isCustomGuestGroupCategory(category: string): boolean {
+  const normalized = category.trim();
+  return normalized.length > 0 && !isDefaultGuestGroupCategory(normalized);
 }
 
 export function getCategorySelectValue(
@@ -41,18 +47,21 @@ export function getCustomCategoryValue(
 export function getGuestGroupCategoryOptions(
   categories: readonly (string | null | undefined)[]
 ): string[] {
-  const customCategories = categories
-    .map((category) => category?.trim() ?? "")
-    .filter(
-      (category) =>
-        category.length > 0 && !isDefaultGuestGroupCategory(category)
-    );
+  const customCategoriesByKey = new Map<string, string>();
+  for (const rawCategory of categories) {
+    const category = rawCategory?.trim() ?? "";
+    if (!isCustomGuestGroupCategory(category)) continue;
+    const key = category.toLocaleLowerCase("es");
+    if (!customCategoriesByKey.has(key)) {
+      customCategoriesByKey.set(key, category);
+    }
+  }
 
   return [
     ...DEFAULT_GUEST_GROUP_CATEGORIES.filter(
       (category) => category !== OTHER_GUEST_GROUP_CATEGORY
     ),
-    ...Array.from(new Set(customCategories)).sort((a, b) =>
+    ...Array.from(customCategoriesByKey.values()).sort((a, b) =>
       a.localeCompare(b, "es")
     ),
     OTHER_GUEST_GROUP_CATEGORY,

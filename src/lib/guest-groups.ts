@@ -67,6 +67,8 @@ export interface GuestGroup {
   notes?: string | null;
   /** Human-facing category for grouping invitations in admin workflows. */
   category?: string;
+  /** Event root used to scope reusable admin data such as category labels. */
+  eventId?: string;
   /** Soft-delete/disable flag from the DB. The boundary already hides inactive
    *  groups (returns `null`), so this is informational on the returned object.
    *  Mock entries omit it (mock mode treats all groups as active). */
