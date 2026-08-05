@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -26,6 +26,7 @@ export interface SeatingAssignmentGuestGroup {
   id: string;
   displayName: string;
   slug: string;
+  category?: string;
   assignedSeats: number | null;
   seatLabel: string;
   rsvpLabel: string;
@@ -75,16 +76,20 @@ const ADMIN_FIELD_LABEL_CLASS =
 const STATUS_CHIP_CLASS =
   "inline-flex shrink-0 rounded-full border border-(--color-admin-border) bg-white/70 px-2.5 py-1 text-xs font-medium text-(--color-ink-dim)";
 
+const ALL_CATEGORY_FILTER = "__all__";
+
 export default function SeatingTableManager({
   tables,
   tableOptions,
   pendingGroups,
+  categoryOptions,
   guestGroupCount,
   pendingGuestGroupCount,
 }: {
   tables: SeatingTableRow[];
   tableOptions: SeatingTableOption[];
   pendingGroups: SeatingAssignmentGuestGroup[];
+  categoryOptions: readonly string[];
   guestGroupCount: number;
   pendingGuestGroupCount: number;
 }) {
@@ -134,6 +139,7 @@ export default function SeatingTableManager({
       <PendingFamiliesSection
         groups={pendingGroups}
         tables={tableOptions}
+        categoryOptions={categoryOptions}
         pendingGuestGroupCount={pendingGuestGroupCount}
       />
     </section>
@@ -520,13 +526,25 @@ function GuestGroupList({
 function PendingFamiliesSection({
   groups,
   tables,
+  categoryOptions,
   pendingGuestGroupCount,
 }: {
   groups: SeatingAssignmentGuestGroup[];
   tables: SeatingTableOption[];
+  categoryOptions: readonly string[];
   pendingGuestGroupCount: number;
 }) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORY_FILTER);
+  const visibleGroups = useMemo(
+    () =>
+      categoryFilter === ALL_CATEGORY_FILTER
+        ? groups
+        : groups.filter((group) => group.category === categoryFilter),
+    [groups, categoryFilter]
+  );
+  const selectedCategoryLabel =
+    categoryFilter === ALL_CATEGORY_FILTER ? "todas" : categoryFilter;
 
   return (
     <section className={ADMIN_CARD_CLASS}>
@@ -539,16 +557,46 @@ function PendingFamiliesSection({
             Asigna cada familia a una mesa desde el celular, sin arrastrar nada.
           </p>
         </div>
-        <span className={STATUS_CHIP_CLASS}>{pendingGuestGroupCount} familias</span>
+        <span className={STATUS_CHIP_CLASS}>{visibleGroups.length} familias</span>
       </div>
+
+      <label className="mt-4 block">
+        <span className={ADMIN_FIELD_LABEL_CLASS}>Filtrar por categoría</span>
+        <select
+          value={categoryFilter}
+          onChange={(event) => {
+            setCategoryFilter(event.target.value);
+            setOpenGroupId(null);
+          }}
+          className={ADMIN_FIELD_CLASS}
+        >
+          <option value={ALL_CATEGORY_FILTER}>
+            Todas las categorías ({pendingGuestGroupCount})
+          </option>
+          {categoryOptions.map((category) => {
+            const count = groups.filter(
+              (group) => group.category === category
+            ).length;
+            return (
+              <option key={category} value={category}>
+                {category} ({count})
+              </option>
+            );
+          })}
+        </select>
+      </label>
 
       {groups.length === 0 ? (
         <p className="mt-4 rounded-2xl border border-(--color-dusty-teal)/35 bg-(--color-sage)/35 px-4 py-5 text-sm text-(--color-ink)">
           Todas las familias activas ya tienen mesa asignada.
         </p>
+      ) : visibleGroups.length === 0 ? (
+        <p className="mt-4 rounded-2xl border border-(--color-admin-border) bg-(--color-mist-blue)/70 px-4 py-5 text-sm text-(--color-ink-dim)">
+          No hay familias pendientes en {selectedCategoryLabel}.
+        </p>
       ) : (
         <ul className="mt-4 grid gap-2">
-          {groups.map((group) => (
+          {visibleGroups.map((group) => (
             <li
               key={group.id}
               className="rounded-2xl border border-(--color-admin-border) bg-(--color-mist-blue)/70 p-3"
@@ -642,6 +690,11 @@ function GuestGroupSummary({ group }: { group: SeatingAssignmentGuestGroup }) {
         <span className="rounded-full border border-(--color-admin-border) bg-white/75 px-3 py-1">
           {group.seatLabel}
         </span>
+        {group.category ? (
+          <span className="rounded-full border border-(--color-admin-border) bg-white/75 px-3 py-1">
+            {group.category}
+          </span>
+        ) : null}
         <span className={getRsvpChipClass(group.rsvpTone)}>{group.rsvpLabel}</span>
       </div>
     </div>
