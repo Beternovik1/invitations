@@ -2,6 +2,11 @@ import "server-only";
 
 import type { GuestGroup } from "@/lib/guest-groups";
 import type { AdminGuestGroup } from "@/lib/admin-overview";
+import type {
+  AdminSeatingGuestGroup,
+  EventTable,
+  TableAssignment,
+} from "@/lib/admin-seating";
 import type { Rsvp } from "@/lib/rsvps";
 
 /**
@@ -24,8 +29,11 @@ import type { Rsvp } from "@/lib/rsvps";
 
 const REST_PATH = "/rest/v1/guest_groups";
 const RSVP_REST_PATH = "/rest/v1/rsvps";
+const EVENT_TABLES_REST_PATH = "/rest/v1/event_tables";
+const TABLE_ASSIGNMENTS_REST_PATH = "/rest/v1/guest_group_table_assignments";
 const COLUMNS =
   "id,slug,access_token,display_name,assigned_seats,is_active,seats_note,notes,sent_at";
+const SEATING_GUEST_GROUP_COLUMNS = `event_id,${COLUMNS}`;
 
 interface SupabaseConfig {
   baseUrl: string;
@@ -267,6 +275,10 @@ interface GuestGroupWithRsvpRow extends GuestGroupRow {
   rsvps: RsvpRow | RsvpRow[] | null;
 }
 
+interface SeatingGuestGroupWithRsvpRow extends GuestGroupWithRsvpRow {
+  event_id: string;
+}
+
 /**
  * Maps a `guest_groups` row that includes its embedded `rsvps` into an
  * `AdminGuestGroup`. Assumes one RSVP per group (the table's PK guarantees
@@ -279,6 +291,47 @@ function mapRowWithRsvp(row: GuestGroupWithRsvpRow): AdminGuestGroup {
   return {
     ...mapRow(row),
     rsvp: rsvpRow ? mapRsvpRow(rsvpRow) : null,
+  };
+}
+
+function mapSeatingGuestGroupRow(
+  row: SeatingGuestGroupWithRsvpRow
+): AdminSeatingGuestGroup {
+  return {
+    ...mapRowWithRsvp(row),
+    eventId: row.event_id,
+  };
+}
+
+interface EventTableRow {
+  id: string;
+  event_id: string;
+  label: string;
+  capacity: number;
+  display_order: number;
+}
+
+function mapEventTableRow(row: EventTableRow): EventTable {
+  return {
+    id: row.id,
+    eventId: row.event_id,
+    label: row.label,
+    capacity: row.capacity,
+    displayOrder: row.display_order,
+  };
+}
+
+interface TableAssignmentRow {
+  event_id: string;
+  guest_group_id: string;
+  table_id: string;
+}
+
+function mapTableAssignmentRow(row: TableAssignmentRow): TableAssignment {
+  return {
+    eventId: row.event_id,
+    guestGroupId: row.guest_group_id,
+    tableId: row.table_id,
   };
 }
 
@@ -313,6 +366,83 @@ export async function fetchAllGuestGroupsFromSupabase(): Promise<GuestGroup[]> {
 
   const rows: GuestGroupRow[] = await res.json();
   return rows.map(mapRow);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Admin seating (read-only)                                                 */
+/* -------------------------------------------------------------------------- */
+
+export async function fetchEventTablesFromSupabase(): Promise<EventTable[]> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${EVENT_TABLES_REST_PATH}` +
+    `?select=id,event_id,label,capacity,display_order` +
+    `&order=display_order.asc`;
+
+  const res = await fetch(url, {
+    headers: authHeaders(serviceRoleKey),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase admin seating tables request failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: EventTableRow[] = await res.json();
+  return rows.map(mapEventTableRow);
+}
+
+export async function fetchTableAssignmentsFromSupabase(): Promise<
+  TableAssignment[]
+> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${TABLE_ASSIGNMENTS_REST_PATH}` +
+    `?select=event_id,guest_group_id,table_id`;
+
+  const res = await fetch(url, {
+    headers: authHeaders(serviceRoleKey),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase admin seating assignments request failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: TableAssignmentRow[] = await res.json();
+  return rows.map(mapTableAssignmentRow);
+}
+
+export async function fetchAdminSeatingGuestGroupsFromSupabase(): Promise<
+  AdminSeatingGuestGroup[]
+> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${REST_PATH}` +
+    `?is_active=eq.true` +
+    `&select=${SEATING_GUEST_GROUP_COLUMNS},rsvps!rsvps_guest_group_id_fkey(${RSVP_COLUMNS})` +
+    `&order=slug.asc`;
+
+  const res = await fetch(url, {
+    headers: authHeaders(serviceRoleKey),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase admin seating guest groups request failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: SeatingGuestGroupWithRsvpRow[] = await res.json();
+  return rows.map(mapSeatingGuestGroupRow);
 }
 
 /** Input for updating a guest group by slug. Snake-cased fields mirror the DB

@@ -69,6 +69,28 @@ function IconChecklist(props: IconProps) {
   );
 }
 
+function IconTable(props: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={props.className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 8h16" />
+      <path d="M5 8l1.5 11" />
+      <path d="M19 8l-1.5 11" />
+      <path d="M9 8l-.5 11" />
+      <path d="M15 8l.5 11" />
+      <path d="M7 14h10" />
+    </svg>
+  );
+}
+
 function IconLogout(props: IconProps) {
   return (
     <svg
@@ -155,6 +177,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/admin/confirmaciones", label: "Confirmaciones", icon: IconChecklist },
+  { href: "/admin/seating", label: "Mesas", icon: IconTable },
 ];
 
 /** Active when `pathname` is the section root or any nested segment under it. */
