@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import AdminPageHeader from "@/app/admin/_components/AdminPageHeader";
 import { confirmationStatusFor } from "@/lib/admin-confirmations-shared";
+import { getGuestGroupCategoryOptions } from "@/lib/guest-group-categories";
 import {
   getAdminSeatingData,
   getGuestGroupRsvpLabel,
@@ -98,6 +99,9 @@ export default async function AdminSeatingPage() {
         tables={buildSeatingTableRows(eventTables, tableAssignments, guestGroups)}
         tableOptions={buildSeatingTableOptions(eventTables, tableAssignments, guestGroups)}
         pendingGroups={unassignedGuestGroups.map(buildSeatingAssignmentGuestGroup)}
+        categoryOptions={getGuestGroupCategoryOptions(
+          guestGroups.map((group) => group.category)
+        )}
         guestGroupCount={guestGroups.length}
         pendingGuestGroupCount={pendingGuestGroupCount}
       />
@@ -224,6 +228,7 @@ function buildSeatingAssignmentGuestGroup(
     id: group.id ?? group.slug,
     displayName: group.displayName,
     slug: group.slug,
+    category: group.category,
     assignedSeats: group.assignedSeats,
     seatLabel: getGuestGroupSeatLabel(group),
     rsvpLabel: getGuestGroupRsvpLabel(group),

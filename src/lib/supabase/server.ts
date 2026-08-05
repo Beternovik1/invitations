@@ -1,6 +1,10 @@
 import "server-only";
 
 import type { GuestGroup } from "@/lib/guest-groups";
+import {
+  DEFAULT_GUEST_GROUP_CATEGORY,
+  isCustomGuestGroupCategory,
+} from "@/lib/guest-group-categories";
 import type { AdminGuestGroup } from "@/lib/admin-overview";
 import type {
   AdminSeatingGuestGroup,
@@ -28,12 +32,13 @@ import type { Rsvp } from "@/lib/rsvps";
  */
 
 const REST_PATH = "/rest/v1/guest_groups";
+const GUEST_GROUP_CATEGORIES_REST_PATH = "/rest/v1/guest_group_categories";
 const RSVP_REST_PATH = "/rest/v1/rsvps";
 const EVENT_TABLES_REST_PATH = "/rest/v1/event_tables";
 const TABLE_ASSIGNMENTS_REST_PATH = "/rest/v1/guest_group_table_assignments";
 const COLUMNS =
-  "id,slug,access_token,display_name,assigned_seats,is_active,seats_note,notes,sent_at";
-const SEATING_GUEST_GROUP_COLUMNS = `event_id,${COLUMNS}`;
+  "id,event_id,slug,access_token,display_name,assigned_seats,is_active,seats_note,notes,sent_at,category";
+const SEATING_GUEST_GROUP_COLUMNS = COLUMNS;
 
 interface SupabaseConfig {
   baseUrl: string;
@@ -64,6 +69,7 @@ function authHeaders(serviceRoleKey: string): HeadersInit {
 /** Row shape returned by the `guest_groups` REST endpoint. */
 interface GuestGroupRow {
   id: string;
+  event_id: string;
   slug: string;
   access_token: string;
   display_name: string;
@@ -75,11 +81,13 @@ interface GuestGroupRow {
    *  Absent on rows written before migration 0005 ran; mapped to `undefined`
    *  so the boundary's downstream "treat as not sent" default stays correct. */
   sent_at: string | null;
+  category: string | null;
 }
 
 function mapRow(row: GuestGroupRow): GuestGroup {
   return {
     id: row.id,
+    eventId: row.event_id,
     slug: row.slug,
     accessToken: row.access_token,
     displayName: row.display_name,
@@ -88,7 +96,76 @@ function mapRow(row: GuestGroupRow): GuestGroup {
     notes: row.notes ?? null,
     isActive: row.is_active,
     sentAt: row.sent_at ?? null,
+    category: row.category ?? DEFAULT_GUEST_GROUP_CATEGORY,
   };
+}
+
+interface GuestGroupCategoryRow {
+  label: string;
+}
+
+export async function fetchGuestGroupCategoryLabelsFromSupabase(
+  eventIds: readonly string[]
+): Promise<string[]> {
+  const uniqueEventIds = Array.from(new Set(eventIds.map((id) => id.trim()))).filter(
+    Boolean
+  );
+  if (uniqueEventIds.length === 0) return [];
+
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${GUEST_GROUP_CATEGORIES_REST_PATH}` +
+    `?event_id=in.(${uniqueEventIds.map(encodeURIComponent).join(",")})` +
+    `&select=label` +
+    `&order=label.asc`;
+
+  const res = await fetch(url, {
+    headers: authHeaders(serviceRoleKey),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase guest group category labels request failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: GuestGroupCategoryRow[] = await res.json();
+  return rows.map((row) => row.label);
+}
+
+export async function upsertGuestGroupCategoryInSupabase(
+  eventId: string,
+  label: string
+): Promise<void> {
+  const trimmedLabel = label.trim();
+  if (!eventId || !isCustomGuestGroupCategory(trimmedLabel)) return;
+
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${GUEST_GROUP_CATEGORIES_REST_PATH}` +
+    `?on_conflict=event_id,label_key`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...authHeaders(serviceRoleKey),
+      Prefer: "resolution=ignore-duplicates",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      event_id: eventId,
+      label: trimmedLabel,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase upsert for guest group category "${trimmedLabel}" failed: ${res.status} ${body}`
+    );
+  }
 }
 
 function isUuidIdentifier(identifier: string): boolean {
@@ -700,6 +777,7 @@ export interface GuestGroupUpdateInput {
   displayName: string;
   assignedSeats: number | null;
   seatsNote: string | null;
+  category: string;
   isActive: boolean;
 }
 
@@ -736,6 +814,7 @@ export async function updateGuestGroupInSupabase(
       display_name: input.displayName,
       assigned_seats: input.assignedSeats,
       seats_note: input.seatsNote,
+      category: input.category,
       is_active: input.isActive,
     }),
   });
@@ -800,6 +879,7 @@ export interface GuestGroupInsertInput {
   displayName: string;
   assignedSeats: number | null;
   seatsNote: string | null;
+  category: string;
 }
 
 /**
@@ -835,6 +915,7 @@ export async function insertGuestGroupInSupabase(
       display_name: input.displayName,
       assigned_seats: input.assignedSeats,
       seats_note: input.seatsNote,
+      category: input.category,
       is_active: true,
     }),
   });

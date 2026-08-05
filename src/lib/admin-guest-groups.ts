@@ -35,6 +35,12 @@
 import { cache } from "react";
 
 import {
+  DEFAULT_GUEST_GROUP_CATEGORY,
+  MAX_GUEST_GROUP_CATEGORY_LENGTH,
+  isCustomGuestGroupCategory,
+  normalizeGuestGroupCategory,
+} from "@/lib/guest-group-categories";
+import {
   GUEST_GROUPS,
   isSupabaseConfigured,
   type GuestGroup,
@@ -64,6 +70,7 @@ import {
 export {
   MAX_ASSIGNED_SEATS,
   MAX_DISPLAY_NAME_LENGTH,
+  MAX_GUEST_GROUP_CATEGORY_LENGTH,
   MAX_SEATS_NOTE_LENGTH,
   MAX_SLUG_LENGTH,
   slugifyGuestGroupName,
@@ -90,6 +97,8 @@ const ERROR_MESSAGES: Record<AdminGuestGroupErrorCode, string> = {
   assigned_seats_invalid:
     "Los lugares asignados deben ser un número entero de 0 o más, o dejarse vacío cuando están por confirmar.",
   assigned_seats_too_many: `No puedes asignar más de ${MAX_ASSIGNED_SEATS} lugares por invitación.`,
+  category_invalid: "Selecciona una categoría para este grupo.",
+  category_too_long: `La categoría debe tener ${MAX_GUEST_GROUP_CATEGORY_LENGTH} caracteres o menos.`,
   seats_note_too_long: `La nota de lugares debe tener ${MAX_SEATS_NOTE_LENGTH} caracteres o menos.`,
   slug_empty:
     "El nombre no genera un identificador válido. Usa al menos una letra o número.",
@@ -106,6 +115,44 @@ function error(
   fields?: AdminGuestGroupError["fields"]
 ): AdminGuestGroupError {
   return { code, message: ERROR_MESSAGES[code], fields };
+}
+
+function parseCategory(input: {
+  category: string;
+  customCategory: string | null;
+}): { ok: true; category: string } | { ok: false; error: AdminGuestGroupError } {
+  const category = normalizeGuestGroupCategory(
+    input.category,
+    input.customCategory
+  );
+  if (category.length === 0) {
+    return {
+      ok: false,
+      error: error("category_invalid", {
+        category: "Selecciona una categoría o escribe una personalizada.",
+      }),
+    };
+  }
+  if (category.length > MAX_GUEST_GROUP_CATEGORY_LENGTH) {
+    return {
+      ok: false,
+      error: error("category_too_long", {
+        category: `Mantén la categoría en ${MAX_GUEST_GROUP_CATEGORY_LENGTH} caracteres o menos.`,
+      }),
+    };
+  }
+  return { ok: true, category };
+}
+
+async function persistCustomCategoryIfNeeded(group: GuestGroup): Promise<void> {
+  if (!group.eventId || !isCustomGuestGroupCategory(group.category ?? "")) {
+    return;
+  }
+
+  const { upsertGuestGroupCategoryInSupabase } = await import(
+    "@/lib/supabase/server"
+  );
+  await upsertGuestGroupCategoryInSupabase(group.eventId, group.category ?? "");
 }
 
 /**
@@ -127,7 +174,11 @@ export const getAllGuestGroupsForAdmin = cache(
     if (!isSupabaseConfigured()) {
       // Mock entries omit `isActive`; model them as active so the editor's
       // "inactive groups stop invitation links" note stays truthful.
-      return GUEST_GROUPS.map((group) => ({ ...group, isActive: true }));
+      return GUEST_GROUPS.map((group) => ({
+        ...group,
+        category: group.category ?? DEFAULT_GUEST_GROUP_CATEGORY,
+        isActive: true,
+      }));
     }
     const { fetchAllGuestGroupsFromSupabase } = await import(
       "@/lib/supabase/server"
@@ -211,6 +262,11 @@ export async function updateGuestGroupForAdmin(
   }
   const seatsNote = trimmedNote.length > 0 ? trimmedNote : null;
 
+  const categoryResult = parseCategory(input);
+  if (!categoryResult.ok) {
+    return { ok: false, error: categoryResult.error };
+  }
+
   if (typeof input.isActive !== "boolean") {
     // Defensive: the action always parses the checkbox to a boolean, so this
     // only fires if the boundary is called from somewhere that didn't.
@@ -229,11 +285,13 @@ export async function updateGuestGroupForAdmin(
       displayName,
       assignedSeats,
       seatsNote,
+      category: categoryResult.category,
       isActive: input.isActive,
     });
     if (!group) {
       return { ok: false, error: error("group_not_found") };
     }
+    await persistCustomCategoryIfNeeded(group);
     return { ok: true, group };
   } catch {
     return { ok: false, error: error("unexpected") };
@@ -333,6 +391,11 @@ export async function createOrReactivateGuestGroupForAdmin(
     };
   }
 
+  const categoryResult = parseCategory(input);
+  if (!categoryResult.ok) {
+    return { ok: false, error: categoryResult.error };
+  }
+
   if (!isSupabaseConfigured()) {
     return { ok: false, error: error("unavailable") };
   }
@@ -368,6 +431,7 @@ export async function createOrReactivateGuestGroupForAdmin(
         displayName,
         assignedSeats,
         seatsNote: existing.seatsNote ?? null,
+        category: categoryResult.category,
         isActive: true,
       });
       if (!reactivated) {
@@ -375,6 +439,7 @@ export async function createOrReactivateGuestGroupForAdmin(
         // found and ask the host to retry; the next attempt will INSERT.
         return { ok: false, error: error("group_not_found") };
       }
+      await persistCustomCategoryIfNeeded(reactivated);
       return { ok: true, group: reactivated };
     }
 
@@ -382,7 +447,9 @@ export async function createOrReactivateGuestGroupForAdmin(
       displayName,
       assignedSeats,
       seatsNote: null,
+      category: categoryResult.category,
     });
+    await persistCustomCategoryIfNeeded(created);
     return { ok: true, group: created };
   } catch {
     return { ok: false, error: error("unexpected") };

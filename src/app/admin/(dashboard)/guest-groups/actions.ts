@@ -89,6 +89,13 @@ export async function updateGuestGroupAction(
   const rawSeatsNote = formData.get("seatsNote");
   const seatsNote = typeof rawSeatsNote === "string" ? rawSeatsNote : null;
 
+  const rawCategory = formData.get("category");
+  const category = typeof rawCategory === "string" ? rawCategory : "";
+
+  const rawCustomCategory = formData.get("customCategory");
+  const customCategory =
+    typeof rawCustomCategory === "string" ? rawCustomCategory : null;
+
   // HTML checkboxes submit their value only when checked, so absence means
   // unchecked (`false`).
   const isActive = formData.get("isActive") === "on";
@@ -98,6 +105,8 @@ export async function updateGuestGroupAction(
       displayName,
       assignedSeats,
       seatsNote,
+      category,
+      customCategory,
       isActive,
     });
     if (result.ok) {
@@ -179,10 +188,19 @@ export async function createGuestGroupAction(
         ? Number(rawAssignedSeats)
         : Number.NaN;
 
+  const rawCategory = formData.get("category");
+  const category = typeof rawCategory === "string" ? rawCategory : "";
+
+  const rawCustomCategory = formData.get("customCategory");
+  const customCategory =
+    typeof rawCustomCategory === "string" ? rawCustomCategory : null;
+
   try {
     const result = await createOrReactivateGuestGroupForAdmin({
       displayName,
       assignedSeats,
+      category,
+      customCategory,
     });
     if (result.ok) {
       // Refresh the official Confirmaciones page so the new/reactivated card

@@ -25,6 +25,7 @@
 
 import { cache } from "react";
 
+import { DEFAULT_GUEST_GROUP_CATEGORY } from "@/lib/guest-group-categories";
 import {
   GUEST_GROUPS,
   isSupabaseConfigured,
@@ -76,11 +77,26 @@ export function rsvpStatusFor(group: AdminGuestGroup): RsvpStatus {
 export const getActiveGuestGroupsWithRsvp = cache(
   async (): Promise<AdminGuestGroup[]> => {
     if (!isSupabaseConfigured()) {
-      return GUEST_GROUPS.map((group) => ({ ...group, rsvp: null }));
+      return GUEST_GROUPS.map((group) => ({
+        ...group,
+        category: group.category ?? DEFAULT_GUEST_GROUP_CATEGORY,
+        rsvp: null,
+      }));
     }
     const { fetchAllActiveGuestGroupsWithRsvpFromSupabase } = await import(
       "@/lib/supabase/server"
     );
     return fetchAllActiveGuestGroupsWithRsvpFromSupabase();
+  }
+);
+
+export const getGuestGroupCategoryLabelsForAdmin = cache(
+  async (eventIds: readonly string[]): Promise<string[]> => {
+    if (!isSupabaseConfigured()) return [];
+
+    const { fetchGuestGroupCategoryLabelsFromSupabase } = await import(
+      "@/lib/supabase/server"
+    );
+    return fetchGuestGroupCategoryLabelsFromSupabase(eventIds);
   }
 );

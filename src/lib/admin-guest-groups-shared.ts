@@ -45,6 +45,8 @@ export interface AdminGuestGroupInput {
   displayName: string;
   assignedSeats: number | null;
   seatsNote: string | null;
+  category: string;
+  customCategory: string | null;
   isActive: boolean;
 }
 
@@ -58,6 +60,10 @@ export type AdminGuestGroupErrorCode =
   | "assigned_seats_invalid"
   // `assignedSeats` exceeds the per-invitation cap (`MAX_ASSIGNED_SEATS`).
   | "assigned_seats_too_many"
+  // `category` is empty or not supported by the admin category selector.
+  | "category_invalid"
+  // The resolved category label exceeds the max length.
+  | "category_too_long"
   // `seatsNote` exceeds the max length after trimming.
   | "seats_note_too_long"
   // The generated slug is empty after slugification (input had no alphanumerics).
@@ -77,7 +83,7 @@ export interface AdminGuestGroupError {
   message: string;
   /** Field-level hints for inline form feedback, keyed by field name. */
   fields?: Partial<
-    Record<"displayName" | "assignedSeats" | "seatsNote", string>
+    Record<"displayName" | "assignedSeats" | "seatsNote" | "category", string>
   >;
 }
 
@@ -157,6 +163,8 @@ export interface AdminGuestGroupCreateInput {
   displayName: string;
   /** Optional assigned seats; `null` means "pending" (no seats yet). */
   assignedSeats: number | null;
+  category: string;
+  customCategory: string | null;
 }
 
 /**

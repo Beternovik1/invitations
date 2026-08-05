@@ -35,14 +35,14 @@
  * values are the URL-safe, lowercase, accent-free, hyphenated form of the same
  * name and are unique across the list.
  *
- * The family/grouping structure of the host's list is preserved here only as
- * section comments — it is not modelled as a field, since the route does not
- * use it and adding one would force a schema change on a slice that has no
- * consumer yet. When a future slice needs to filter or render by family, the
- * boundary can grow a `category` field then.
+ * Guest groups now carry an admin-facing `category` label. The public invitation
+ * route does not render it; `/admin/confirmaciones` edits it so a later Mesas
+ * slice can filter assignment work by group category.
  */
 
 import { cache } from "react";
+
+import { DEFAULT_GUEST_GROUP_CATEGORY } from "@/lib/guest-group-categories";
 
 export interface GuestGroup {
   /** Stable internal UUID from `guest_groups.id`. Present only in Supabase mode;
@@ -65,6 +65,10 @@ export interface GuestGroup {
   /** Free-form admin note from the DB. Not shown to guests yet; reserved for
    *  the future admin/RSVP slice. Mock entries omit it. */
   notes?: string | null;
+  /** Human-facing category for grouping invitations in admin workflows. */
+  category?: string;
+  /** Event root used to scope reusable admin data such as category labels. */
+  eventId?: string;
   /** Soft-delete/disable flag from the DB. The boundary already hides inactive
    *  groups (returns `null`), so this is informational on the returned object.
    *  Mock entries omit it (mock mode treats all groups as active). */
@@ -187,7 +191,8 @@ export function isSupabaseConfigured(): boolean {
 }
 
 function getMockGuestGroupBySlug(slug: string): GuestGroup | undefined {
-  return GUEST_GROUPS.find((group) => group.slug === slug);
+  const group = GUEST_GROUPS.find((entry) => entry.slug === slug);
+  return group ? { ...group, category: DEFAULT_GUEST_GROUP_CATEGORY } : undefined;
 }
 
 function getAllMockGuestGroupSlugs(): string[] {
