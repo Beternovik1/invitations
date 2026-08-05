@@ -15,6 +15,9 @@ import {
   isAdminAccessConfigured,
   isAdminAuthenticated,
 } from "@/lib/admin-access";
+import SeatingTableManager, {
+  type SeatingTableRow,
+} from "@/app/admin/(dashboard)/seating/SeatingTableManager";
 
 interface SeatingSummary {
   totalGroups: number;
@@ -95,64 +98,10 @@ export default async function AdminSeatingPage() {
         </div>
       </div>
 
-      {eventTables.length === 0 ? (
-        <EmptyTablesState guestGroupCount={guestGroups.length} />
-      ) : (
-        <div className="grid gap-3">
-          {eventTables.map((table) => {
-            const assignedGroups = getTableAssignmentsForTable(
-              table,
-              tableAssignments,
-              guestGroups
-            );
-            const assignedSeats = assignedGroups.reduce(
-              (sum, group) => sum + (group.assignedSeats ?? 0),
-              0
-            );
-            const capacityLabel = `${assignedSeats} de ${table.capacity} lugares`;
-            const occupancyPercent =
-              table.capacity > 0
-                ? Math.min(100, Math.round((assignedSeats / table.capacity) * 100))
-                : 0;
-
-            return (
-              <article
-                key={table.id}
-                className={ADMIN_CARD_CLASS}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="truncate text-lg font-semibold tracking-[-0.02em] text-(--color-ink)">
-                      {table.label}
-                    </h2>
-                    <p className="mt-0.5 text-sm text-(--color-ink-dim)">
-                      {capacityLabel}
-                    </p>
-                  </div>
-                  <span className={STATUS_CHIP_CLASS}>Solo lectura</span>
-                </div>
-
-                <div className="mt-4" aria-label={capacityLabel}>
-                  <div className="h-2 overflow-hidden rounded-full bg-(--color-mist-blue-deep)">
-                    <div
-                      className="h-full rounded-full bg-(--color-admin-navy)"
-                      style={{ width: `${occupancyPercent}%` }}
-                    />
-                  </div>
-                </div>
-
-                {assignedGroups.length === 0 ? (
-                  <p className="mt-4 rounded-2xl border border-(--color-glass-border) bg-(--color-glass) px-4 py-5 text-sm text-(--color-ink-dim)">
-                    Esta mesa todavía no tiene familias asignadas.
-                  </p>
-                ) : (
-                  <GuestGroupList groups={assignedGroups} className="mt-4" />
-                )}
-              </article>
-            );
-          })}
-        </div>
-      )}
+      <SeatingTableManager
+        tables={buildSeatingTableRows(eventTables, tableAssignments, guestGroups)}
+        guestGroupCount={guestGroups.length}
+      />
 
       <section className={ADMIN_CARD_CLASS}>
         <div className="flex items-start justify-between gap-3">
@@ -221,6 +170,61 @@ function computeSeatingSummary(
   };
 }
 
+function buildSeatingTableRows(
+  eventTables: {
+    id: string;
+    label: string;
+    capacity: number;
+    displayOrder: number;
+    eventId: string;
+  }[],
+  tableAssignments: { eventId: string; guestGroupId: string; tableId: string }[],
+  guestGroups: AdminSeatingGuestGroup[]
+): SeatingTableRow[] {
+  return eventTables.map((table) => {
+    const assignedGroups = getTableAssignmentsForTable(
+      table,
+      tableAssignments,
+      guestGroups
+    );
+    const assignedSeats = assignedGroups.reduce(
+      (sum, group) => sum + (group.assignedSeats ?? 0),
+      0
+    );
+    const capacityLabel = `${assignedSeats} de ${table.capacity} lugares`;
+    const occupancyPercent =
+      table.capacity > 0
+        ? Math.min(100, Math.round((assignedSeats / table.capacity) * 100))
+        : 0;
+
+    return {
+      id: table.id,
+      label: table.label,
+      capacity: table.capacity,
+      displayOrder: table.displayOrder,
+      assignedSeats,
+      capacityLabel,
+      occupancyPercent,
+      assignedGroups: assignedGroups.map((group) => ({
+        id: group.id ?? group.slug,
+        displayName: group.displayName,
+        slug: group.slug,
+        seatLabel: getGuestGroupSeatLabel(group),
+        rsvpLabel: getGuestGroupRsvpLabel(group),
+        rsvpTone: getGuestGroupRsvpTone(group),
+      })),
+    };
+  });
+}
+
+function getGuestGroupRsvpTone(
+  group: AdminSeatingGuestGroup
+): "empty" | "declined" | "confirmed" {
+  if (!group.rsvp) return "empty";
+  if (group.rsvp.attendingCount === 0) return "declined";
+  return "confirmed";
+}
+
 function HeroSummaryCard({
   label,
   value,
@@ -268,21 +272,6 @@ function ContextCard({ label, value }: { label: string; value: number }) {
         {value}
       </p>
     </div>
-  );
-}
-
-function EmptyTablesState({ guestGroupCount }: { guestGroupCount: number }) {
-  return (
-    <section className="rounded-2xl border border-dashed border-(--color-admin-border) bg-white/60 px-5 py-8 text-center shadow-[0_14px_30px_rgba(36,48,68,0.05)] sm:px-6">
-      <p className="text-lg font-semibold tracking-[-0.02em] text-(--color-ink)">
-        Todavía no hay mesas creadas.
-      </p>
-      <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-(--color-ink-dim)">
-        Cuando se carguen mesas y familias, aquí vas a ver el acomodo por mesa.
-        Por ahora puedes revisar {guestGroupCount} familias activas abajo, sin
-        modificar datos.
-      </p>
-    </section>
   );
 }
 

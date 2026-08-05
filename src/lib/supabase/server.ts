@@ -311,6 +311,12 @@ interface EventTableRow {
   display_order: number;
 }
 
+interface EventTableWriteInput {
+  label: string;
+  capacity: number;
+  displayOrder: number;
+}
+
 function mapEventTableRow(row: EventTableRow): EventTable {
   return {
     id: row.id,
@@ -443,6 +449,193 @@ export async function fetchAdminSeatingGuestGroupsFromSupabase(): Promise<
 
   const rows: SeatingGuestGroupWithRsvpRow[] = await res.json();
   return rows.map(mapSeatingGuestGroupRow);
+}
+
+export async function insertEventTableInSupabase(
+  eventId: string,
+  input: EventTableWriteInput
+): Promise<EventTable> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${EVENT_TABLES_REST_PATH}` +
+    `?select=id,event_id,label,capacity,display_order`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...authHeaders(serviceRoleKey),
+      Prefer: "return=representation",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      event_id: eventId,
+      label: input.label,
+      capacity: input.capacity,
+      display_order: input.displayOrder,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase insert for event table "${input.label}" failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: EventTableRow[] = await res.json();
+  const row = rows[0];
+  if (!row) {
+    throw new Error(
+      `Supabase insert for event table "${input.label}" returned no representation.`
+    );
+  }
+  return mapEventTableRow(row);
+}
+
+export async function insertEventTablesInSupabase(
+  eventId: string,
+  inputs: EventTableWriteInput[]
+): Promise<EventTable[]> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${EVENT_TABLES_REST_PATH}` +
+    `?select=id,event_id,label,capacity,display_order`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...authHeaders(serviceRoleKey),
+      Prefer: "return=representation",
+    },
+    cache: "no-store",
+    body: JSON.stringify(
+      inputs.map((input) => ({
+        event_id: eventId,
+        label: input.label,
+        capacity: input.capacity,
+        display_order: input.displayOrder,
+      }))
+    ),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase bulk insert for event tables failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: EventTableRow[] = await res.json();
+  if (rows.length !== inputs.length) {
+    throw new Error(
+      `Supabase bulk insert for event tables returned ${rows.length} rows for ${inputs.length} inputs.`
+    );
+  }
+  return rows.map(mapEventTableRow);
+}
+
+export async function updateEventTableInSupabase(
+  tableId: string,
+  eventId: string,
+  input: EventTableWriteInput
+): Promise<EventTable | null> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${EVENT_TABLES_REST_PATH}` +
+    `?id=eq.${encodeURIComponent(tableId)}` +
+    `&event_id=eq.${encodeURIComponent(eventId)}` +
+    `&select=id,event_id,label,capacity,display_order`;
+
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      ...authHeaders(serviceRoleKey),
+      Prefer: "return=representation",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      label: input.label,
+      capacity: input.capacity,
+      display_order: input.displayOrder,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase update for event table "${tableId}" failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: EventTableRow[] = await res.json();
+  const row = rows[0];
+  if (!row) return null;
+  return mapEventTableRow(row);
+}
+
+export async function countTableAssignmentsInSupabase(
+  eventId: string,
+  tableId: string
+): Promise<number> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${TABLE_ASSIGNMENTS_REST_PATH}` +
+    `?event_id=eq.${encodeURIComponent(eventId)}` +
+    `&table_id=eq.${encodeURIComponent(tableId)}` +
+    `&select=table_id`;
+
+  const res = await fetch(url, {
+    headers: {
+      ...authHeaders(serviceRoleKey),
+      Prefer: "count=exact",
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase assignment count for event table "${tableId}" failed: ${res.status} ${body}`
+    );
+  }
+
+  const range = res.headers.get("content-range");
+  const count = range?.match(/\/(\d+)$/)?.[1];
+  if (count) return Number(count);
+
+  const rows: { table_id: string }[] = await res.json();
+  return rows.length;
+}
+
+export async function deleteEventTableInSupabase(
+  tableId: string,
+  eventId: string
+): Promise<boolean> {
+  const { baseUrl, serviceRoleKey } = getConfig();
+  const url =
+    `${baseUrl}${EVENT_TABLES_REST_PATH}` +
+    `?id=eq.${encodeURIComponent(tableId)}` +
+    `&event_id=eq.${encodeURIComponent(eventId)}` +
+    `&select=id,event_id,label,capacity,display_order`;
+
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      ...authHeaders(serviceRoleKey),
+      Prefer: "return=representation",
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Supabase delete for event table "${tableId}" failed: ${res.status} ${body}`
+    );
+  }
+
+  const rows: EventTableRow[] = await res.json();
+  return rows.length > 0;
 }
 
 /** Input for updating a guest group by slug. Snake-cased fields mirror the DB
