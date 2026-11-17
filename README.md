@@ -1,36 +1,120 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Invitations
 
-## Getting Started
+**A mobile-first digital invitation and event-operations app.** Guests receive a personalized invitation and RSVP link; hosts manage responses, guest groups, categories, and table assignments from one admin dashboard.
 
-First, run the development server:
+Built for a real quinceañera and shaped around a practical constraint: the host team manages the event from their phones, so everyday tasks should be clear and tap-friendly.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Product preview
+
+### Public invitation
+
+The invitation brings event details, schedule, locations, dress code, music, and RSVP together in one responsive page.
+
+<p align="center">
+  <img src="./assets/readme/public-invitation.webp" width="100%" alt="Public quinceañera invitation with a full-screen portrait, event title, date, and scroll cue">
+</p>
+
+### Host dashboard
+
+Hosts can review invitation status, manage guest groups, and organize pending families by category before assigning tables. Guest-group names in this screenshot are anonymized.
+
+<p align="center">
+  <img src="./assets/readme/admin-confirmations.webp" width="100%" alt="Admin confirmations dashboard with summary metrics, search and filters, and anonymized guest-group cards">
+</p>
+
+## What it does
+
+- **Personalized invitations:** Each guest group receives a private invitation link with its name and assigned seat count.
+- **RSVPs:** Guests confirm attendance for their group, with the form constrained by the seats assigned by the host.
+- **Confirmaciones:** Hosts create and edit invitations, review RSVP status, search and filter groups, copy links, and track which invitations have been sent.
+- **Guest categories:** Groups can use built-in or custom categories. Custom labels are saved per event so they remain available even when no current group uses them.
+- **Mesas:** Hosts create tables with capacity limits, assign or move guest groups, and filter pending families by category.
+- **Responsive admin:** The main workflows use forms, cards, and tap controls instead of drag-and-drop.
+
+## How it is built
+
+```text
+Guest invitation link
+        │
+        ▼
+Personalized invitation ──► RSVP form ──► RSVP record
+                                      │
+Host dashboard ◄── guest groups ◄────┘
+        │
+        ├── categories
+        └── tables and guest-group assignments
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Area | Implementation |
+| --- | --- |
+| Web app | Next.js 16 App Router, React 19, TypeScript |
+| UI | Tailwind CSS 4, Framer Motion, local fonts and image assets |
+| Data | Supabase PostgreSQL accessed through server-side PostgREST requests |
+| Admin access | Shared access key exchanged for a signed, HTTP-only session cookie |
+| Deployment | Vercel |
+| Migrations | Ordered SQL files in `supabase/migrations/` |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Data model
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The core data is organized around events and stable guest-group identities:
 
-## Learn More
+- `events` — event scope for reusable event data.
+- `guest_groups` — invitation identity, display name, assigned seats, category, and active/sent state.
+- `rsvps` — response linked to a guest group.
+- `guest_group_categories` — reusable custom category labels scoped to an event.
+- `event_tables` — named tables and their capacity.
+- `guest_group_table_assignments` — guest-group-to-table assignments.
 
-To learn more about Next.js, take a look at the following resources:
+Public invitation URLs use a random access token for new links and retain a legacy slug lookup for previously shared links. RSVP and admin relationships use stable internal IDs. Supabase service-role access stays on the server and is not exposed to browser code.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Run locally
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Requirements
 
-## Deploy on Vercel
+- Node.js and npm
+- A Supabase project for persistent RSVP and admin operations
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Start the app
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+git clone https://github.com/Beternovik1/invitations.git
+cd invitations
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+The public invitation can render with local mock data when Supabase is not configured. To use persistent RSVP and admin features, set these server-only variables in `.env.local`:
+
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+ADMIN_ACCESS_KEY=replace-with-a-long-random-secret
+```
+
+Never commit `.env.local` or expose the service-role key in a `NEXT_PUBLIC_` variable. Apply the SQL migrations in `supabase/migrations/` to the Supabase project before using the corresponding database features. The admin dashboard is available at [http://localhost:3000/admin/login](http://localhost:3000/admin/login).
+
+## Checks
+
+```bash
+npm test
+npm run lint
+npm run build
+```
+
+## Current scope
+
+This repository is a working, event-specific product with reusable event-scoped data foundations. The invitation copy, imagery, and event details are currently configured for one celebration; self-service event setup, individual user accounts, team roles, billing, and a full multi-tenant onboarding flow are not implemented.
+
+## Repository map
+
+```text
+src/app/i/[slug]/                         Personalized invitation and RSVP route
+src/app/admin/(dashboard)/confirmaciones  Guest-group and RSVP administration
+src/app/admin/(dashboard)/seating         Table management and assignments
+src/lib/                                  Data boundaries, validation, and shared models
+supabase/migrations/                      Ordered database schema changes
+assets/readme/                            README product screenshots
+```
